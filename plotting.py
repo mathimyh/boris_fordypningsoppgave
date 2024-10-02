@@ -16,7 +16,7 @@ def plot_something(filename):
     plt.show()
 
 
-def SA_plotting(filename):
+def SA_plotting(filename, plotname, title):
 
     f = open(filename, 'r')
 
@@ -26,11 +26,11 @@ def SA_plotting(filename):
 
     data = data.split('\t')
 
-    ys = []
-
 
     # Calculate only one of the three dimensions
-    i = 2
+    # 
+    ys = []
+    i = 0
     while i < len(data):
         ys.append(float(data[i]))
         i += 3
@@ -41,21 +41,32 @@ def SA_plotting(filename):
         xs.append(i)
 
     plt.plot(xs, ys)
-    plt.show()
+    plt.xlabel("Distance from injector (nm)")
+    plt.ylabel("Spin accumulation in x-direction")
+    plt.title(title)
 
-    # Maybe the total length of the vector? (Doesn't seem like it)
+    plotname = "plots/" + plotname
+    plt.savefig(plotname, dpi=500)
 
-    ys = []
+    # Total length of the vector
 
-    for i in range(0, len(data), 3):
-        ys.append(np.sqrt(float(data[i])**2 + float(data[i+1])**2 + float(data[i+2])**2))
+    # ys = []
 
-    xs = []
+    # for i in range(0, len(data), 3):
+    #     ys.append(np.sqrt(float(data[i])**2 + float(data[i+1])**2 + float(data[i+2])**2))
 
-    for i in range(len(ys)):
-        xs.append(i)
+    # xs = []
 
-    plt.plot(xs, ys)
-    plt.show()
+    # for i in range(len(ys)):
+    #     xs.append(i)
 
-SA_plotting('temp/try1.txt')
+    # plt.plot(xs, ys)
+    # plt.xlabel("Distance from injector (nm)")
+    # plt.ylabel("Spin accumulation")
+    # plt.title(title)
+
+    # plotname = "plots/" + plotname
+    # plt.savefig(plotname, dpi=500)
+
+
+SA_plotting('data/mxdmdt2.txt', "afm_transport/x-axis_mxdmdt2.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")

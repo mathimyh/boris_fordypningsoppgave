@@ -62,7 +62,7 @@ def Init(t0):
     ns.setparam("base", "K3_AFM", 0)
     ns.setparam("base", "cHa", 1)
     ns.setparam("base", "D_AFM", (0, 250e-6))
-    ns.setparam("base", "ea1", (0,0,1))
+    ns.setparam("base", "ea1", (1,0,0))
 
     # Set gilbert damping really high for the edges
     ns.setparam("damper1", "grel_AFM", (1, 1))
@@ -113,7 +113,7 @@ def Init(t0):
     ns.savesim('ground_state.bsm')
 
 
-def runSimulation(t1, V):
+def runSimulation(t1, V, data):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -123,7 +123,7 @@ def runSimulation(t1, V):
 
     # Voltage stage
     ns.setstage('V')
-    ns.editstagevalue('0', str(0.001*V))
+    ns.editstagevalue('0', str(-0.001*V))
     
     ns.editstagestop(0, 'time', t1 * 1e-12)
     ns.editdatasave(0, 'time', t1 * 1e-12)
@@ -146,16 +146,17 @@ def runSimulation(t1, V):
 
     ns.cuda(1)
 
-    first = np.array([300, 0, 0, 301, 20, 8]) * 1e-9
-    ns.setdata("<mxdmdt>", "base", first)
-    for i in range(600):
-        temp = np.array([300 + 1*i, 0, 0, 301 + 1*i, 20, 8]) * 1e-9
-        ns.adddata("<mxdmdt>", "base", temp)
+    first = np.array([275, 0, 0, 276, 20, 8]) * 1e-9
+    ns.setdata(data, "base", first)
+    for i in range(500):
+        temp = np.array([275 + 1*i, 0, 0, 276 + 1*i, 20, 8]) * 1e-9
+        ns.adddata(data, "base", temp)
 
 
     # Saving 
     # ns.setdata('<mxdmdt>', [300e-9, 0, 0, 500e-9, 20e-9, 8e-9])
-    ns.savedatafile("C:/Users/mathimyh/Documents/Boris data/Simulations/testing/temp/try1.txt")
+    savename = "C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/" + data +".txt"
+    ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/neg_V_mxdmdt2.txt")
 
     ns.Run()
 
@@ -166,9 +167,10 @@ def main():
     
     t0 = 15
     t1 = 10
-    V = 0.64
+    V = 0.14
+    data = "<mxdmdt2>"
 
-    runSimulation(t1, V)
+    runSimulation(t1, V, data)
 
     # Init(t0)
 
