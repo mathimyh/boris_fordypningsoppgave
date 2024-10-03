@@ -41,12 +41,13 @@ def SA_plotting(filename, plotname, title):
         xs.append(i)
 
     plt.plot(xs, ys)
-    plt.xlabel("Distance from injector (nm)")
-    plt.ylabel("Spin accumulation in x-direction")
-    plt.title(title)
+    plt.show()
+    # plt.xlabel("Distance from injector (nm)")
+    # plt.ylabel("Spin accumulation in x-direction")
+    # plt.title(title)
 
-    plotname = "plots/" + plotname
-    plt.savefig(plotname, dpi=500)
+    # plotname = "plots/" + plotname
+    # plt.savefig(plotname, dpi=500)
 
     # Total length of the vector
 
@@ -69,4 +70,4 @@ def SA_plotting(filename, plotname, title):
     # plt.savefig(plotname, dpi=500)
 
 
-SA_plotting('data/mxdmdt2.txt', "afm_transport/x-axis_mxdmdt2.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")
+SA_plotting('data/testy.txt', "afm_transport/x-axis_mxdmdt2.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")

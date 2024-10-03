@@ -113,7 +113,7 @@ def Init(t0):
     ns.savesim('ground_state.bsm')
 
 
-def runSimulation(t1, V, data):
+def runSimulation(t1, V, data, negative):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -123,7 +123,11 @@ def runSimulation(t1, V, data):
 
     # Voltage stage
     ns.setstage('V')
-    ns.editstagevalue('0', str(-0.001*V))
+    neg = 1
+    if negative:
+        neg = -1
+
+    ns.editstagevalue('0', str(neg*0.001*V))
     
     ns.editstagestop(0, 'time', t1 * 1e-12)
     ns.editdatasave(0, 'time', t1 * 1e-12)
@@ -155,8 +159,10 @@ def runSimulation(t1, V, data):
 
     # Saving 
     # ns.setdata('<mxdmdt>', [300e-9, 0, 0, 500e-9, 20e-9, 8e-9])
-    savename = "C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/" + data +".txt"
-    ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/neg_V_mxdmdt2.txt")
+    if negative:
+        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/neg_V_%data%.txt")
+    else:
+        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/%data%.txt")
 
     ns.Run()
 
@@ -168,9 +174,9 @@ def main():
     t0 = 15
     t1 = 10
     V = 0.14
-    data = "<mxdmdt2>"
+    data = "<mxdmdt>"
 
-    runSimulation(t1, V, data)
+    runSimulation(t1, V, data, negative=True)
 
     # Init(t0)
 
