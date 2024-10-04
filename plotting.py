@@ -70,4 +70,32 @@ def SA_plotting(filename, plotname, title):
     # plt.savefig(plotname, dpi=500)
 
 
-SA_plotting('data/testy.txt', "afm_transport/x-axis_mxdmdt2.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")
+def plateau_plot(filename, plotname, title):
+
+    f = open(filename, 'r')
+
+    lines = f.readlines()
+    lines = lines[13:]
+
+    ts = []
+    vals = []
+
+    for line in lines:
+        vec = line.split('\t')
+        ts.append(float(vec[0])*1e12)
+        vals.append(float(vec[1]))
+
+    plt.plot(ts, vals)
+    plt.xlabel("Time (ps)")
+    plt.ylabel("Magnetization")
+    plt.title(title)
+
+    plt.savefig(plotname, dpi=500)
+
+
+def main():
+    # SA_plotting('data/testy.txt', "afm_transport/x-axis_mxdmdt2.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")
+    plateau_plot("data/plateau_%data%_%x_val%.txt", "plots/afm_transport/plateau_290.png", "Magnetization at 290 nm")
+
+if __name__ == '__main__':
+    main()
