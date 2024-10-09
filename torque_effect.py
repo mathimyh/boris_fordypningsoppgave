@@ -123,9 +123,9 @@ def runSimulation(t, V, data, negative):
 
     # Saving 
     if negative:
-        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/neg_V_%data%.txt")
+        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_%data%.txt")
     else:
-        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/%data%.txt")
+        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/%data%.txt")
 
     ns.Run()
 
@@ -133,23 +133,32 @@ def find_plateau(t, V, data, negative, x_val):
 
     ns = virtual_current(t, V, negative)
 
-    ns.editdatasave(0, 'time', 5e-12)
-    
-    temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
-    ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/data/plateau_%data%_%x_val%.txt")
 
-    ns.setdata('time')
+    # Only save if I want to
+    if x_val != False:
+
+        ns.editdatasave(0, 'time', 5e-12)
+        
+        temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
+        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/plateau_%data%_%x_val%.txt")
+
+        ns.setdata('time')
 
     ns.adddata(data, "base", temp)
-    
-    ns.editstagestop(0, 'time', 200 * 1e-12)
+
+    ns.editstagestop(0, 'time', 200e-12)
+
+    ns.editstagestop(0, 'time', 200e-12)
 
     ns.Run()
 
     # After running this it takes around 200ps for the magnetization to stabilize...
-    # So let's save the simulation after 200ps
-    
-    ns.savesim('steadystate_')
+    # Save the sim so its easy to start simulations from this
+
+    if negative:
+        ns.savesim("neg_V_steady_state.bsm")
+    else:
+        ns.savesim("steady_state.bsm")
 
 def main():
     
@@ -160,8 +169,8 @@ def main():
     data = "<mxdmdt>"
 
     # runSimulation(t, V, data, negative=True)
-    # find_plateau(t, V, data, negative=True, x_val=290)
-    Init(t0)
+    find_plateau(t, V, data, negative=True, x_val=False)
+    # Init(t0)
 
 
 if __name__ == '__main__':
