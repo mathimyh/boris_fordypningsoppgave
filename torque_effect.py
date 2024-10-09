@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 font = {'size' : 20}
 mpl.rc('font', **font)
 
-
+# Initializes an AFM mesh with its parameters and a relax stage. Saves the ground state after the simuation is over
 def Init(t0):
     
     ns = NSClient(); ns.configure(True, False)
@@ -50,7 +50,7 @@ def Init(t0):
     ns.setparam("base", "cHa", 1)
     ns.setparam("base", "D_AFM", (0, 250e-6))
     ns.setparam("base", "ea1", (1,0,0))
-    ns.setparamvar("base", "damping_AFM", 'tanh(-x-100) + tanh(x-1000e-9)')
+    
     
 
     
@@ -65,7 +65,7 @@ def Init(t0):
 
     ns.savesim('ground_state.bsm')
 
-
+# Sets up a simulation with a virtual current
 def virtual_current(t, V, negative):
 
     ns = NSClient(); ns.configure(True, False)
@@ -88,10 +88,6 @@ def virtual_current(t, V, negative):
     # Set spesific params and modules here for torque
     ns.addmodule("base", "SOTfield")
     ns.addmodule("base", "transport")
-    ns.addmodule("damper1", "SOTfield")
-    ns.addmodule("damper1", "transport")
-    ns.addmodule("damper2", "SOTfield")
-    ns.addmodule("damper2", "transport")
     ns.setparam("base", "SHA", '1')
     ns.setparam("base", "flST", '1')
     
@@ -104,9 +100,12 @@ def virtual_current(t, V, negative):
     ns.setparamvar('SHA','equation','step(x-225e-9)-step(x-275e-9)')
     ns.setparamvar('flST','equation','step(x-225e-9)-step(x-275e-9)')
 
+    # Add damping function so it increases at the edges
+    ns.setparamvar('damping_AFM', 'equation', 'tanh(-x-100e-9) + tanh(x-1000e-9) + 3')
+
     return ns
 
-
+# Runs the simulation and saves the spin accumulation. NOT time averaged
 def runSimulation(t, V, data, negative):
 
     ns = virtual_current(t, V, negative)
@@ -123,9 +122,16 @@ def runSimulation(t, V, data, negative):
 
     # Saving 
     if negative:
-        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_%data%.txt")
+        if data == '<mxdmdt>':
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_<mxdmdt>.txt')
+        elif data == '<mxdmdt2>':
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_<mxdmdt2>.txt')
     else:
-        ns.savedatafile("C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/%data%.txt")
+        if data == '<mxdmdt>':
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/<mxdmdt>.txt')
+        elif data == '<mxdmdt2>':
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/<mxdmdt2>.txt')
+    
 
     ns.Run()
 
@@ -162,14 +168,15 @@ def find_plateau(t, V, data, negative, x_val):
 
 def main():
     
-    t0 = 15
-    t = 500
+    t0 = 20
+    t = 25
+    
     # 0.085 gives a good signal without flipping the magnetization
-    V = 0.085
-    data = "<mxdmdt>"
+    V = 0.17
+    data = '<mxdmdt>'
 
-    # runSimulation(t, V, data, negative=True)
-    find_plateau(t, V, data, negative=True, x_val=False)
+    runSimulation(t, V, data, negative=True)
+    # find_plateau(t, V, data, negative=True, x_val=False)
     # Init(t0)
 
 
