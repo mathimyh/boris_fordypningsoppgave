@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, 'C:/users/mathimyh/documents/boris data/borispythonscripts/')
 
-from NetSocks import NSClient   , customize_plots # type: ignore
+from NetSocks import NSClient  
 import os
 import numpy as np
 import matplotlib as mpl
@@ -28,24 +28,11 @@ def Init(t0):
     ns.setafmesh("base", Base)
     ns.cellsize("base", np.array([4, 4, 4]) * 1e-9)
 
-    # Add two meshes with really high Gilbert damping to avoid reflections
-    Damper1 = np.array([-50, 0, 0, 0, Ly, Lz]) * 1e-9
-    ns.addafmesh("damper1", Damper1)
-    Damper2 = np.array([Lx, 0, 0, Lx + 50, Ly, Lz]) * 1e-9
-    ns.addafmesh("damper2", Damper2)
-    ns.cellsize("damper1", np.array([4, 4, 4]) * 1e-9)
-    ns.cellsize("damper2", np.array([4, 4, 4]) * 1e-9)
-
     # Add the modules
     ns.addmodule("base", "aniuni")
-    ns.addmodule("damper1", "aniuni")
-    ns.addmodule("damper2", "aniuni")
-
 
     # Set temperature
     ns.temperature("0.3K")
-    ns.temperature("damper1", "0.3K")
-    ns.temperature("damper2", "0.3K")
 
     # Set parameters
     ns.setparam("base", "grel_AFM", (1, 1))
@@ -63,39 +50,7 @@ def Init(t0):
     ns.setparam("base", "cHa", 1)
     ns.setparam("base", "D_AFM", (0, 250e-6))
     ns.setparam("base", "ea1", (1,0,0))
-
-    # Set gilbert damping really high for the edges
-    ns.setparam("damper1", "grel_AFM", (1, 1))
-    ns.setparam("damper1", "damping_AFM", (1e10, 1e10))
-    ns.setparam("damper1", "Ms_AFM", 2.1e3)
-    ns.setparam("damper1", "Nxy", (0, 0))
-    ns.setparam("damper1", "A_AFM", 1e-12)
-    ns.setparam("damper1", "Ah", -200e3)
-    ns.setparam("damper1", "Anh", (0.0, 0.0))
-    ns.setparam("damper1", "J1", 0)
-    ns.setparam("damper1", "J2", 0)
-    ns.setparam("damper1", "K1_AFM", (10e3, 10e3))
-    ns.setparam("damper1", "K2_AFM", 0)
-    ns.setparam("damper1", "K3_AFM", 0)
-    ns.setparam("damper1", "cHa", 1)
-    ns.setparam("damper1", "D_AFM", (0, 250e-6))
-    ns.setparam("damper1", "ea1", (0,0,1))
-    
-    ns.setparam("damper2", "grel_AFM", (1, 1))
-    ns.setparam("damper2", "damping_AFM", (1000, 1000))
-    ns.setparam("damper2", "Ms_AFM", 2.1e3)
-    ns.setparam("damper2", "Nxy", (0, 0))
-    ns.setparam("damper2", "A_AFM", 1e-12)
-    ns.setparam("damper2", "Ah", -200e3)
-    ns.setparam("damper2", "Anh", (0.0, 0.0))
-    ns.setparam("damper2", "J1", 0)
-    ns.setparam("damper2", "J2", 0)
-    ns.setparam("damper2", "K1_AFM", (10e3, 10e3))
-    ns.setparam("damper2", "K2_AFM", 0)
-    ns.setparam("damper2", "K3_AFM", 0)
-    ns.setparam("damper2", "cHa", 1)
-    ns.setparam("damper2", "D_AFM", (0, 250e-6))
-    ns.setparam("damper2", "ea1", (0,0,1))
+    ns.setparamvar("base", "damping_AFM", 'tanh(-x-100) + tanh(x-1000e-9)')
     
 
     
@@ -105,8 +60,6 @@ def Init(t0):
     ns.setode('sLLG', 'RK4')
     ns.setdt(1e-15)
     ns.random()
-    ns.random("damper1")
-    ns.random("damper2")
 
     ns.Run()
 
@@ -143,9 +96,13 @@ def virtual_current(t, V, negative):
     ns.setparam("base", "flST", '1')
     
     # Add the electrodes
-    ns.addelectrode('225e-9,0,0,275e-9,0,8e-9')
-    ns.addelectrode('225e-9,20e-9,0,275e-9,20e-9,8e-9')
+    ns.addelectrode('0,0,0,500e-9,0,8e-9')
+    ns.addelectrode('0,20e-9,0,500e-9,20e-9,8e-9')
     ns.designateground('1')
+    
+    # Add step function so that torque only acts on region in the injector
+    ns.setparamvar('SHA','equation','step(x-225e-9)-step(x-275e-9)')
+    ns.setparamvar('flST','equation','step(x-225e-9)-step(x-275e-9)')
 
     return ns
 
@@ -184,10 +141,15 @@ def find_plateau(t, V, data, negative, x_val):
     ns.setdata('time')
 
     ns.adddata(data, "base", temp)
+    
+    ns.editstagestop(0, 'time', 200 * 1e-12)
 
     ns.Run()
 
     # After running this it takes around 200ps for the magnetization to stabilize...
+    # So let's save the simulation after 200ps
+    
+    ns.savesim('steadystate_')
 
 def main():
     
@@ -198,8 +160,8 @@ def main():
     data = "<mxdmdt>"
 
     # runSimulation(t, V, data, negative=True)
-    find_plateau(t, V, data, negative=True, x_val=290)
-    # Init(t0)
+    # find_plateau(t, V, data, negative=True, x_val=290)
+    Init(t0)
 
 
 if __name__ == '__main__':
