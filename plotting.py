@@ -94,8 +94,8 @@ def plateau_plot(filename, plotname, title):
 
 
 def main():
-    SA_plotting('cache/.txt', "afm_transport/testytest.png", "Spin accumulation in AFM (mxdmdt2), V = 140μV")
-    # plateau_plot("cache/plateau_%data%_%x_val%.txt", "plots/afm_transport/plateau_290.png", "Magnetization at 290 nm")
+    # SA_plotting('cache/neg_V_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
+    plateau_plot("cache/plateau_negV_mxdmdt_200nm.txt", "plots/afm_transport/plateau_200.png", "Spin accumulation (mxdmdt) at 200 nm")
 
 if __name__ == '__main__':
     main()
