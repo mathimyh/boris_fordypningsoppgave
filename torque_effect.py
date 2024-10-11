@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+import plotting
 
 
 font = {'size' : 20}
@@ -61,10 +62,10 @@ def Init(t0):
 
     ns.Run()
 
-    ns.savesim('ground_state.bsm')
+    ns.savesim('sims/ground_state.bsm')
 
 # Sets up a simulation with a virtual current
-def virtual_current(t, V, sim_name):
+def virtual_current(t, V, damping, sim_name):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -85,6 +86,7 @@ def virtual_current(t, V, sim_name):
     ns.addmodule("base", "transport")
     ns.setparam("base", "SHA", '1')
     ns.setparam("base", "flST", '1')
+    ns.setparam("base", "damping_AFM", (damping, damping))
     
     # Add the electrodes
     ns.addelectrode('0,0,0,600e-9,0,8e-9')
@@ -92,11 +94,11 @@ def virtual_current(t, V, sim_name):
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
-    ns.setparamvar('SHA','equation','step(x-100e-9)-step(x-120e-9)')
-    ns.setparamvar('flST','equation','step(x-100e-9)-step(x-120e-9)')
+    ns.setparamvar('SHA','equation','step(x-150e-9)-step(x-170e-9)')
+    ns.setparamvar('flST','equation','step(x-150e-9)-step(x-170e-9)')
 
     # Add damping function so it increases at the edges
-    ns.setparamvar('damping_AFM', 'equation', '1 + 100000 * (exp(-(x)^2 / 500e-18) + exp(-(x-600e-9)^2 / 500e-18))')
+    ns.setparamvar('damping_AFM', 'equation', '1 + 1000 * (exp(-(x)^2 / 500e-18) + exp(-(x-600e-9)^2 / 500e-18))')
 
     return ns
 
@@ -126,9 +128,9 @@ def runSimulation(t, V, data, x_start, x_stop):
     ns.Run()
 
 # A function that runs the virtual current from a simulation for a given time and saves the simulation after
-def run_and_save(t, V, loadname, savename):
+def run_and_save(t, V, damping, loadname, savename):
     
-    ns = virtual_current(t, V, loadname)
+    ns = virtual_current(t, V, damping, loadname)
 
     ns.cuda(1)
 
@@ -140,9 +142,7 @@ def run_and_save(t, V, loadname, savename):
 # Function for finding the plateau. Saves data from one point along the x-axis.
 def find_plateau(t, V, data, damping, x_val=False):
 
-    ns = virtual_current(t, V, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
-
-    ns.setparam("base", "damping_AFM", (damping, damping))
+    ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
     ns.cuda(1)
 
@@ -168,21 +168,19 @@ def find_plateau(t, V, data, damping, x_val=False):
     ns.Run()
 
 # Load a simulation in steady state, run the simulation and save the SA along with the time
-def time_avg_SA(t, V, data, x_start, x_stop, damping):
+def time_avg_SA(t, V, damping, data, x_start, x_stop):
 
     if data == '<mxdmdt>':
         savedata = 'mxdmdt'
     elif data == '<mxdmdt2>':
         savedata = 'mxdmdt2'
 
-    sim_name = 'sims/' + str(V) + '_steady_state.bsm'
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     
-    ns = virtual_current(t, V, sim_name)
+    ns = virtual_current(t, V, damping, sim_name)
     ns.reset()
 
-    ns.setparam("base", "damping_AFM", (damping, damping))
-
-    ns.editdatasave(0, 'time', 5e-12)
+    ns.editdatasave(0, 'time', t/200)
 
     ns.setdata('time')
     for i in range(x_stop - x_start):
@@ -192,7 +190,7 @@ def time_avg_SA(t, V, data, x_start, x_stop, damping):
     dampname = str(damping)
     Vname = str(V)
 
-    savename = 'C:/Users/mathimyh/documents/boris data/simulations/cache/tAvg_damping' + dampname + '_V' + Vname + '_' + savedata  + '.txt'
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/tAvg_damping' + dampname + '_V' + Vname + '_' + savedata  + '.txt'
 
     ns.savedatafile(savename)
 
@@ -202,18 +200,21 @@ def time_avg_SA(t, V, data, x_start, x_stop, damping):
 
 def main():
     
+    # The parameters one often changes 
     t0 = 20
-    t = 300
-    
-    # What gives a good signal without flipping the magnetization
-    V = 0.08
+    t = 400
+    V = 0.145
     data = '<mxdmdt>'
+    damping = 0.001
 
     # runSimulation(t, V, data, negative=True)
-    find_plateau(t, V, data, damping=0.0001, x_val=350)
+    # find_plateau(t, V, data, damping, x_val=350)
     # Init(t0)
-    # run_and_save(t, V, negative=True, loadname="sims/ground_state.bsm", savename="sims/negV_steady_state.bsm")
+    savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/V_'+ str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    run_and_save(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
     # time_avg_SA(t, V, data, negative=True)
+
+
 
 
 if __name__ == '__main__':

@@ -87,7 +87,7 @@ def plateau_plot(filename, plotname, title):
 
     plt.plot(ts, vals)
     plt.xlabel("Time (ps)")
-    plt.ylabel("Magnetization")
+    plt.ylabel("Spin accumulation")
     plt.title(title)
 
     plt.savefig(plotname, dpi=500)
@@ -95,7 +95,7 @@ def plateau_plot(filename, plotname, title):
 
 def main():
     # SA_plotting('cache/neg_V_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
-    plateau_plot("cache/plateau_negV_mxdmdt_200nm.txt", "plots/afm_transport/plateau_200.png", "Spin accumulation (mxdmdt) at 200 nm")
+    plateau_plot("cache/plateau_V0.145_damping0.001_mxdmdt_350nm.txt", "plots/afm_transport/plateau_350_V0.145_0.001_mxdmdt.png", "Spin accumulation (mxdmdt) at 350 nm with V = 0.145 μV")
 
 if __name__ == '__main__':
     main()
