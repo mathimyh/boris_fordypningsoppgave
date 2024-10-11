@@ -18,7 +18,7 @@ def Init(t0):
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
     
-    # Initialize the 3 meshes. Idk if it does anything nice to do it using classes
+    # Initialize the mesh
     Lx = 600
     Ly = 20
     Lz = 8
@@ -51,6 +51,7 @@ def Init(t0):
     ns.setparam("base", "D_AFM", (0, 250e-6))
     ns.setparam("base", "ea1", (1,0,0))
 
+    # Set the first relax stage, this finds the ground state
     ns.setstage('Relax')
     ns.editstagestop(0, 'time', t0 * 1e-12)
 
@@ -94,11 +95,11 @@ def virtual_current(t, V, negative, sim_name):
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
-    ns.setparamvar('SHA','equation','step(x-290e-9)-step(x-310e-9)')
-    ns.setparamvar('flST','equation','step(x-290e-9)-step(x-310e-9)')
+    ns.setparamvar('SHA','equation','step(x-100e-9)-step(x-120e-9)')
+    ns.setparamvar('flST','equation','step(x-100e-9)-step(x-120e-9)')
 
     # Add damping function so it increases at the edges
-    ns.setparamvar('damping_AFM', 'equation', 'tanh(-x-50e-9) + tanh(x-550e-9) + 3')
+    ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-((x)^2)/(500e-18) + exp(-((x-600e-9)^2)/500e-18))')
 
     return ns
 
@@ -120,14 +121,14 @@ def runSimulation(t, V, data, negative):
     # Saving 
     if negative:
         if data == '<mxdmdt>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_mxdmdt.txt')
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/neg_V_mxdmdt.txt')
         elif data == '<mxdmdt2>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/neg_V_mxdmdt2.txt')
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/neg_V_mxdmdt2.txt')
     else:
         if data == '<mxdmdt>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/mxdmdt.txt')
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/mxdmdt.txt')
         elif data == '<mxdmdt2>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/mxdmdt2.txt')
+            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/mxdmdt2.txt')
     
     ns.getexactprofile()
 
@@ -148,7 +149,7 @@ def run_and_save(t, V, negative, loadname, savename):
 # Function for finding the plateau. Saves data from one point along the x-axis.
 def find_plateau(t, V, data, negative, damping, x_val=False):
 
-    ns = virtual_current(t, V, negative, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/sims/ground_state.bsm')
+    ns = virtual_current(t, V, negative, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
     ns.setparam("base", "damping_AFM", (damping, damping))
 
@@ -166,9 +167,9 @@ def find_plateau(t, V, data, negative, damping, x_val=False):
         
         temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
         if negative:
-            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/plateau_negV_damping' + +str(damping) + '_' + savedata + '_' + str(x_val) + 'nm.txt'
+            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_negV_damping' + +str(damping) + '_' + savedata + '_' + str(x_val) + 'nm.txt'
         else:
-            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/testing/cache/plateau_damping' + str(damping) + + '_' + savedata + '_' + str(x_val) + 'nm.txt'
+            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_damping' + str(damping) + + '_' + savedata + '_' + str(x_val) + 'nm.txt'
         
         ns.savedatafile(savename)
 
@@ -183,7 +184,7 @@ def time_avg_SA(t, V, data, negative, damping):
 
     if data == '<mxdmdt>':
         savedata = 'mxdmdt'
-    elif data == 'mxdmdt2':
+    elif data == '<mxdmdt2>':
         savedata = 'mxdmdt2'
 
     if negative:
@@ -218,7 +219,7 @@ def main():
     t0 = 20
     t = 300
     
-    # 0.4 gives a good signal without flipping the magnetization
+    # What gives a good signal without flipping the magnetization
     V = 0.1
     data = '<mxdmdt>'
 
