@@ -64,7 +64,7 @@ def Init(t0):
     ns.savesim('ground_state.bsm')
 
 # Sets up a simulation with a virtual current
-def virtual_current(t, V, negative, sim_name):
+def virtual_current(t, V, sim_name):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -74,11 +74,8 @@ def virtual_current(t, V, negative, sim_name):
 
     # Voltage stage
     ns.setstage('V')
-    neg = 1
-    if negative:
-        neg = -1
 
-    ns.editstagevalue('0', str(neg*0.001*V))
+    ns.editstagevalue('0', str(0.001*V))
     
     ns.editstagestop(0, 'time', t * 1e-12)
 
@@ -99,45 +96,39 @@ def virtual_current(t, V, negative, sim_name):
     ns.setparamvar('flST','equation','step(x-100e-9)-step(x-120e-9)')
 
     # Add damping function so it increases at the edges
-    ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-((x)^2)/(500e-18) + exp(-((x-600e-9)^2)/500e-18))')
+    ns.setparamvar('damping_AFM', 'equation', '1 + 100000 * (exp(-(x)^2 / 500e-18) + exp(-(x-600e-9)^2 / 500e-18))')
 
     return ns
 
 # Runs the simulation and saves the spin accumulation. NOT time averaged
-def runSimulation(t, V, data, negative):
+def runSimulation(t, V, data, x_start, x_stop):
 
-    ns = virtual_current(t, V, negative)
+    ns = virtual_current(t, V)
     ns.editdatasave(0, 'time', t * 1e-12)
 
     ns.cuda(1)
 
-    first = np.array([275, 0, 0, 276, 20, 8]) * 1e-9
+    first = np.array([x_start, 0, 0, x_start+1, 20, 8]) * 1e-9
     ns.setdata(data, "base", first)
-    for i in range(500):
-        temp = np.array([275 + 1*i, 0, 0, 276 + 1*i, 20, 8]) * 1e-9
+    for i in range(x_stop - x_start -1):
+        temp = np.array([x_start + 1 + 1*i, 0, 0, x_start + 2 + 1*i, 20, 8]) * 1e-9
         ns.adddata(data, "base", temp)
 
-
     # Saving 
-    if negative:
-        if data == '<mxdmdt>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/neg_V_mxdmdt.txt')
-        elif data == '<mxdmdt2>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/neg_V_mxdmdt2.txt')
-    else:
-        if data == '<mxdmdt>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/mxdmdt.txt')
-        elif data == '<mxdmdt2>':
-            ns.savedatafile('C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/mxdmdt2.txt')
-    
-    ns.getexactprofile()
+    if data == '<mxdmdt>':
+            savedata = 'mxdmdt'
+    elif data == 'mxdmdt2':
+        savedata = 'mxdmdt2'
+
+    savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/V' + str(V) + '_' + savedata + '_' + str(x_start) + '_' + str(x_stop) + '.txt'
+    ns.savedatafile(savename)
 
     ns.Run()
 
 # A function that runs the virtual current from a simulation for a given time and saves the simulation after
-def run_and_save(t, V, negative, loadname, savename):
+def run_and_save(t, V, loadname, savename):
     
-    ns = virtual_current(t, V, negative, loadname)
+    ns = virtual_current(t, V, loadname)
 
     ns.cuda(1)
 
@@ -147,9 +138,9 @@ def run_and_save(t, V, negative, loadname, savename):
 
 
 # Function for finding the plateau. Saves data from one point along the x-axis.
-def find_plateau(t, V, data, negative, damping, x_val=False):
+def find_plateau(t, V, data, damping, x_val=False):
 
-    ns = virtual_current(t, V, negative, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
+    ns = virtual_current(t, V, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
     ns.setparam("base", "damping_AFM", (damping, damping))
 
@@ -166,10 +157,7 @@ def find_plateau(t, V, data, negative, damping, x_val=False):
         ns.editdatasave(0, 'time', 5e-12)
         
         temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
-        if negative:
-            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_negV_damping' + +str(damping) + '_' + savedata + '_' + str(x_val) + 'nm.txt'
-        else:
-            savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_damping' + str(damping) + + '_' + savedata + '_' + str(x_val) + 'nm.txt'
+        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_V' + str(V) + '_damping' + str(damping) + '_' + savedata + '_' + str(x_val) + 'nm.txt'
         
         ns.savedatafile(savename)
 
@@ -180,21 +168,16 @@ def find_plateau(t, V, data, negative, damping, x_val=False):
     ns.Run()
 
 # Load a simulation in steady state, run the simulation and save the SA along with the time
-def time_avg_SA(t, V, data, negative, damping):
+def time_avg_SA(t, V, data, x_start, x_stop, damping):
 
     if data == '<mxdmdt>':
         savedata = 'mxdmdt'
     elif data == '<mxdmdt2>':
         savedata = 'mxdmdt2'
 
-    if negative:
-        sim_name = 'sims/negV_steady_state.bsm'
-        negstr = '_negV'
-    else:
-        sim_name = 'sims/steady_state.bsm'
-        negstr = ''
+    sim_name = 'sims/' + str(V) + '_steady_state.bsm'
     
-    ns = virtual_current(t, V, negative, sim_name)
+    ns = virtual_current(t, V, sim_name)
     ns.reset()
 
     ns.setparam("base", "damping_AFM", (damping, damping))
@@ -202,11 +185,14 @@ def time_avg_SA(t, V, data, negative, damping):
     ns.editdatasave(0, 'time', 5e-12)
 
     ns.setdata('time')
-    for i in range(300):
-        temp = np.array([120 + 1*i, 0, 0, 121 + 1*i, 20, 8]) * 1e-9
+    for i in range(x_stop - x_start):
+        temp = np.array([x_start + 1*i, 0, 0, x_start + 1 + 1*i, 20, 8]) * 1e-9
         ns.adddata(data, "base", temp)
 
-    savename = 'C:/Users/mathimyh/documents/boris data/simulations/cache/tAvg_damping' + str(damping) + '_' + savedata + negstr + '.txt'
+    dampname = str(damping)
+    Vname = str(V)
+
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/cache/tAvg_damping' + dampname + '_V' + Vname + '_' + savedata  + '.txt'
 
     ns.savedatafile(savename)
 
@@ -220,11 +206,11 @@ def main():
     t = 300
     
     # What gives a good signal without flipping the magnetization
-    V = 0.1
+    V = 0.08
     data = '<mxdmdt>'
 
     # runSimulation(t, V, data, negative=True)
-    find_plateau(t, V, data, negative=True, damping=0.0001)
+    find_plateau(t, V, data, damping=0.0001, x_val=350)
     # Init(t0)
     # run_and_save(t, V, negative=True, loadname="sims/ground_state.bsm", savename="sims/negV_steady_state.bsm")
     # time_avg_SA(t, V, data, negative=True)
