@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-import plotting
+from plotting import tAvg_SA_plotting
 
 
 font = {'size' : 20}
@@ -177,20 +177,27 @@ def time_avg_SA(t, V, damping, data, x_start, x_stop):
 
     sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     
-    ns = virtual_current(t, V, damping, sim_name)
+    ns = NSClient(); ns.configure(True, False)
+    ns.reset()
+    
+    ns.loadsim(sim_name)
     ns.reset()
 
-    ns.editdatasave(0, 'time', t/200)
+    # Voltage stage
+    ns.setstage('V')
+
+    ns.editstagevalue('0', str(0.001*V))
+    
+    ns.editstagestop(0, 'time', t * 1e-12)
+
+    ns.editdatasave(0, 'time', t * 1e-12 /200)
 
     ns.setdata('time')
     for i in range(x_stop - x_start):
         temp = np.array([x_start + 1*i, 0, 0, x_start + 1 + 1*i, 20, 8]) * 1e-9
         ns.adddata(data, "base", temp)
 
-    dampname = str(damping)
-    Vname = str(V)
-
-    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/tAvg_damping' + dampname + '_V' + Vname + '_' + savedata  + '.txt'
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
 
     ns.savedatafile(savename)
 
@@ -202,7 +209,7 @@ def main():
     
     # The parameters one often changes 
     t0 = 20
-    t = 400
+    t = 600
     V = 0.145
     data = '<mxdmdt>'
     damping = 0.001
@@ -210,10 +217,10 @@ def main():
     # runSimulation(t, V, data, negative=True)
     # find_plateau(t, V, data, damping, x_val=350)
     # Init(t0)
-    savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/V_'+ str(V) + '_damping' + str(damping) + '_steady_state.bsm'
-    run_and_save(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
-    # time_avg_SA(t, V, data, negative=True)
-
+    # savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/V'+ str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    # run_and_save(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
+    # time_avg_SA(t, V, damping, data, 170, 500)
+    tAvg_SA_plotting(t, V, damping, data)
 
 
 
