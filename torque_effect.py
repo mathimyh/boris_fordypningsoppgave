@@ -20,7 +20,7 @@ def Init(t0):
     ns.reset()
     
     # Initialize the mesh
-    Lx = 600
+    Lx = 800
     Ly = 20
     Lz = 8
     
@@ -62,7 +62,7 @@ def Init(t0):
 
     ns.Run()
 
-    ns.savesim('sims/ground_state.bsm')
+    ns.savesim('C:/Users/mathimyh/Documents/boris data/simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
 # Sets up a simulation with a virtual current
 def virtual_current(t, V, damping, sim_name):
@@ -98,7 +98,7 @@ def virtual_current(t, V, damping, sim_name):
     ns.setparamvar('flST','equation','step(x-150e-9)-step(x-170e-9)')
 
     # Add damping function so it increases at the edges
-    ns.setparamvar('damping_AFM', 'equation', '1 + 1000 * (exp(-(x)^2 / 500e-18) + exp(-(x-600e-9)^2 / 500e-18))')
+    ns.setparamvar('damping_AFM', 'equation', '1 + 1000 * (exp(-(x)^2 / 500e-18) + exp(-(x-800e-9)^2 / 500e-18))')
 
     return ns
 
@@ -133,6 +133,7 @@ def run_and_save(t, V, damping, loadname, savename):
     ns = virtual_current(t, V, damping, loadname)
 
     ns.cuda(1)
+    ns.iterupdate(2000)
 
     ns.Run()
 
@@ -140,14 +141,15 @@ def run_and_save(t, V, damping, loadname, savename):
 
 
 # Function for finding the plateau. Saves data from one point along the x-axis.
-def find_plateau(t, V, data, damping, x_val=False):
+def find_plateau(t, V, data, damping, x_vals=False):
 
     ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
     ns.cuda(1)
+    ns.iterupdate(2000)
 
     # Save a profile to find the plateau
-    if x_val != False:
+    if x_vals != False:
 
         if data == '<mxdmdt>':
             savedata = 'mxdmdt'
@@ -155,15 +157,17 @@ def find_plateau(t, V, data, damping, x_val=False):
             savedata = 'mxdmdt2'
         
         ns.editdatasave(0, 'time', 5e-12)
-        
-        temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
-        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_V' + str(V) + '_damping' + str(damping) + '_' + savedata + '_' + str(x_val) + 'nm.txt'
-        
-        ns.savedatafile(savename)
-
         ns.setdata('time')
 
-        ns.adddata(data, "base", temp)
+        for x_val in x_vals:
+            temp = np.array([x_val, 0, 0, x_val + 10, 20, 8]) * 1e-9
+            ns.adddata(data, "base", temp)
+    
+        x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)
+        
+        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau_V' + str(V) + '_damping' + str(damping) + '_' + savedata + '_' + x_vals_string + 'nm.txt'
+        
+        ns.savedatafile(savename)
 
     ns.Run()
 
@@ -209,18 +213,18 @@ def main():
     
     # The parameters one often changes 
     t0 = 20
-    t = 600
-    V = 0.145
+    t = 400
+    V = -0.15
     data = '<mxdmdt>'
     damping = 0.001
 
     # runSimulation(t, V, data, negative=True)
-    # find_plateau(t, V, data, damping, x_val=350)
+    # find_plateau(t, V, data, damping, x_vals=[250,350,450,550])
     # Init(t0)
-    # savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/V'+ str(V) + '_damping' + str(damping) + '_steady_state.bsm'
-    # run_and_save(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
+    savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/V'+ str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    run_and_save(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
     # time_avg_SA(t, V, damping, data, 170, 500)
-    tAvg_SA_plotting(t, V, damping, data)
+    # tAvg_SA_plotting(t, V, damping, data, 170, 500)
 
 
 
