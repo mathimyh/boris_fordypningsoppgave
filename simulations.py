@@ -15,7 +15,7 @@ def Init(t0):
     ns.reset()
     
     # Initialize the mesh
-    Lx = 1200
+    Lx = 7000
     Ly = 50
     Lz = 5
     
@@ -53,7 +53,7 @@ def Init(t0):
 
     ns.setode('sLLG', 'RK4')
     ns.setdt(1e-15)
-    ns.random()
+    # ns.random()
 
     ns.cuda(1)
     ns.Run()
@@ -83,22 +83,27 @@ def virtual_current(t, V, damping, sim_name):
     ns.setparam("base", "SHA", '1')
     ns.setparam("base", "flST", '1')
     ns.setparam("base", "damping_AFM", (damping, damping))
-    ns.delmodule("base", "zeeman")
+    ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode('0,0,0,200e-9,0,5e-9')
-    ns.addelectrode('0,50e-9,0,200e-9,50e-9,5e-9')
+    ns.addelectrode('3400e-9,0,0,3600e-9,0,5e-9')
+    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,5e-9')
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
-    ns.setparamvar('SHA','equation','step(x-150e-9)-step(x-170e-9)')
-    ns.setparamvar('flST','equation','step(x-150e-9)-step(x-170e-9)')
+    ns.setparamvar('SHA','equation','step(x-3480e-9)-step(x-3520e-9)')
+    ns.setparamvar('flST','equation','step(x-3480e-9)-step(x-3520e-9)')
 
     # Add damping function so it increases at the edges
-    ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-(x)^2 / 1000e-18) + exp(-(x-1200e-9)^2 / 1000e-18))')
+    # ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-(x)^2 / 1000e-18) + exp(-(x-1200e-9)^2 / 1000e-18))')
+    ns.setparamvar('damping_AFM', 'equation', 'step(-x+200e-9)*(100*tanh((-x) / 50e-9) + 101) + step(x-6800e-9)*(100*tanh((x-7000e-9)/ 50e-9) + 101) + step(x-200e-9) - step(x-6800e-9)')
+
 
     # Maybe try periodic boundary conditions for the large one, instead of damping equation?
     # ns.pbc('base', 'x')
+
+    ns.cuda(1)
+    ns.selectcudadevice([0,1])
 
     return ns
 
@@ -119,7 +124,7 @@ def runSimulation(t, V, data, x_start, x_stop):
     # Saving 
     if data == '<mxdmdt>':
             savedata = 'mxdmdt'
-    elif data == 'mxdmdt2':
+    elif data == '<mxdmdt2>':
         savedata = 'mxdmdt2'
 
     savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/V' + str(V) + '_' + savedata + '_' + str(x_start) + '_' + str(x_stop) + '.txt'
@@ -132,8 +137,7 @@ def save_steadystate(t, V, damping):
     
     ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
-    ns.cuda(1)
-    ns.iterupdate(2000)
+    ns.iterupdate(200)
 
     ns.Run()
 
@@ -146,7 +150,6 @@ def find_plateau(t, V, data, damping, x_vals=False):
 
     ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
 
-    ns.cuda(1)
     ns.iterupdate(200)
 
     # Save a profile to find the plateau
@@ -154,7 +157,7 @@ def find_plateau(t, V, data, damping, x_vals=False):
 
         if data == '<mxdmdt>':
             savedata = 'mxdmdt'
-        elif data == 'mxdmdt2':
+        elif data == '<mxdmdt2>':
             savedata = 'mxdmdt2'
         
         ns.editdatasave(0, 'time', 5e-12)
@@ -210,6 +213,7 @@ def time_avg_SA(t, V, damping, data, x_start, x_stop):
     ns.savedatafile(savename)
 
     ns.cuda(1)
+    # ns.selectcudadevice([0,1])
 
     ns.Run()
 
@@ -252,21 +256,21 @@ def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
 def main():
     
     # Parameters  
-    t0 = 100
-    t = 600
-    V = -0.01
-    data = '<mxdmdt>'
+    t0 = 50
+    t = 1000
+    V = 0.009
+    data = '<mxdmdt2>'
     damping = 2e-4
 
     # runSimulation(t, V, data, negative=True)
-    save_steadystate(t, V, damping)
+    # save_steadystate(300, V, damping)
     # for i in range(3):
-    # find_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800, 1000])
+    # find_plateau(t, V, data, damping, x_vals=[3600, 4000, 4500, 5500, 6500, 7000])
     #     V -= 0.001
     # plot_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800])
     # Init(t0)
     # savename = 'k(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
-    time_avg_SA(t, V, damping, data, 170, 1000)
+    time_avg_SA(t, V, damping, data, 3510, 7000)
     # profile_from_sim(t, V, damping, "C:/Users/mathimyh/Documents/Boris data/Simulations/boris_fordypningsoppgave/sims/V-0.15_damping0.001_steady_state.bsm", 170, 700)
 
 

@@ -82,12 +82,13 @@ def plot_plateau(t, V, data, damping, x_vals):
     lines = f.readlines()
     lines = lines[12:]
     
+
     indexer = 0
 
-    fig, ax = plt.subplots(2, 2)
+    fig, ax = plt.subplots(2, 3)
     
 
-    for i in range(1, len(lines[0].split('\t'))-2, 3):
+    for i in range(1, len(lines[0].split('\t')), 3):
         ts = []
         vals = []
 
@@ -104,11 +105,17 @@ def plot_plateau(t, V, data, damping, x_vals):
             ax[0][1].plot(ts, vals)
             ax[0][1].title.set_text(text)
         elif indexer == 2:
+            ax[0][2].plot(ts, vals)
+            ax[0][2].title.set_text(text)
+        elif indexer == 3:
             ax[1][0].plot(ts, vals)
             ax[1][0].title.set_text(text)
-        elif indexer == 3:
+        elif indexer == 4:
             ax[1][1].plot(ts, vals)
             ax[1][1].title.set_text(text)
+        elif indexer == 5:
+            ax[1][2].plot(ts, vals)
+            ax[1][2].title.set_text(text)
 
         indexer += 1
 
@@ -160,11 +167,81 @@ def plot_tAvg_SA(t, V, damping, data, x_start, x_stop):
     plt.tight_layout()
 
     plotname = 'plots/t_avg/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '_t' + str(t) + 'ps.png'
-    plt.savefig(plotname, dpi=500)      
+    plt.savefig(plotname, dpi=500)   
+
+
+def plot_tAvg_comparison(positive, negative, title, savename):
+    
+    posotive = positive.split('/')[-1]
+    temps = posotive.split('_')
+    temp = temps[2]
+    V = float(temp[1:])
+
+
+    f1 = open(positive, 'r')
+    f2 = open(negative, 'r')
+
+    lines1 = f1.readlines()
+    lines2 = f2.readlines()
+    lines1 = lines1[10:]
+    lines2 = lines2[10:]
+
+    xs = np.linspace(0, len(lines1[0]))
+
+    vals1 = []
+    vals2 = []
+
+    for i in range(len(lines1)):
+        vec1 = lines1[i].split('\t')
+        vec2 = lines2[i].split('\t')
+        all_vals1 = vec1[1:]
+        all_vals2 = vec2[1:]
+        j = 0
+        temp1 = []
+        temp2 = []
+        while j < len(all_vals1):
+            temp1.append(float(all_vals1[j]))
+            temp2.append(float(all_vals2[j]))
+            j += 3
+        vals1.append(temp1)
+        vals2.append(temp2)
+        
+
+    ys1 = []
+    ys2 = []
+
+    for i in range(len(vals1[0])):
+        val1 = 0
+        val2 = 0
+        for j in range(len(vals1)):
+            val1 += float(vals1[j][i])
+            val2 += float(vals2[j][i])
+        val1 /= len(vals1)
+        val2 /= len(vals2)
+        ys1.append(val1)
+        ys2.append(val2)
+
+    pos_V = 'V = ' + str(V * 1e6) + 'μV'
+    neg_V = 'V = ' + str(-V * 1e6) + 'μV'
+
+
+    plt.plot(xs, ys1, color='r', label=pos_V)
+    plt.plot(xs, ys2, color='b', label=neg_V)
+
+    plt.xlabel('Distance from injector (nm)')
+    plt.ylabel('μ')
+    plt.title(title)
+
+    plt.legend()
+
+    plt.savefig(savename, dpi=600)
 
 def main():
+    a = 0
     # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
-    plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
+    # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
+    plot_tAvg_comparison('cache/t_avg/7000long/tAvg_damping0.0002_V0.009_mxdmdt.txt', 'cache/t_avg/7000long/tAvg_damping0.0002_V-0.009_mxdmdt.txt', 'Time averaged spin accumulation in AFM with virtual current', 'plots/t_avg/7000long/tAvg_comparison_mxdmdt.png')
+
 
 if __name__ == '__main__':
     main()
