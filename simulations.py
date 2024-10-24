@@ -3,6 +3,7 @@ sys.path.insert(0, 'C:/users/mathimyh/documents/boris data/borispythonscripts/')
 
 from NetSocks import NSClient   # type: ignore
 import numpy as np
+import matplotlib.pyplot as plt
 
 from plotting import plot_plateau
 from plotting import plot_tAvg_SA
@@ -14,11 +15,10 @@ def Init(t0):
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
     
-    # Initialize the mesh
     Lx = 7000
     Ly = 50
-    Lz = 5
-    
+    Lz = 15
+
     # Add the base layer
     Base = np.array([0, 0, 0, Lx, Ly, Lz]) * 1e-9
     ns.setafmesh("base", Base)
@@ -68,6 +68,7 @@ def virtual_current(t, V, damping, sim_name):
     
     ns.loadsim(sim_name)
     ns.reset()
+    ns.clearelectrodes()
 
     # Voltage stage
     ns.setstage('V')
@@ -86,8 +87,8 @@ def virtual_current(t, V, damping, sim_name):
     ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode('3400e-9,0,0,3600e-9,0,5e-9')
-    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,5e-9')
+    ns.addelectrode('3400e-9,0,0,3600e-9,0,10e-9')
+    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,10e-9')
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
@@ -103,7 +104,7 @@ def virtual_current(t, V, damping, sim_name):
     # ns.pbc('base', 'x')
 
     ns.cuda(1)
-    ns.selectcudadevice([0,1])
+    # ns.selectcudadevice([1,0])
 
     return ns
 
@@ -181,10 +182,7 @@ def find_plateau(t, V, data, damping, x_vals=False):
 # Load a simulation in steady state, run the simulation and save the SA along with the time
 def time_avg_SA(t, V, damping, data, x_start, x_stop):
 
-    if data == '<mxdmdt>':
-        savedata = 'mxdmdt'
-    elif data == '<mxdmdt2>':
-        savedata = 'mxdmdt2'
+    savedata = data[1:-1]
 
     sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     
@@ -253,27 +251,91 @@ def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
 
     ns.Run()
 
+def dispersion_relation(t, damping, x_start, x_stop):
+
+    time_step = 0.1e-12
+    t0 = 10e-12
+    total_time = (2 * t0 )
+
+    Ms = 2.1e3
+
+    # sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/ground_state.bsm'
+
+
+    ns = NSClient(); ns.configure(True, False)
+    
+    ns.loadsim(sim_name)
+    ns.reset()
+
+    time = 0.0
+    ns.cuda(1)
+
+    output_file = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/dispersions/first_test.txt'
+    ns.dp_newfile(output_file)
+
+    while time < total_time:
+        # ns.setstage('V')
+        # ns.editstagevalue('0', str(0.001*V))
+        ns.editstagestop(0, 'time', time + time_step)
+        ns.Run()
+        ns.dp_getexactprofile([x_start * 1e-9 + 5e-9/2, 50e-9/2 + 5e-9/2, 0], [x_stop * 1e-9 - 5e-9/2, 50e-9/2 + 5e-9/2, 0], 5e-9, 0)
+        ns.dp_div(0, Ms)
+        ns.dp_saveappendasrow(output_file, 0)
+        time += time_step
+
+    pos_time = np.loadtxt(output_file)
+
+    fourier_data = np.fft.fftshift(np.abs(np.fft.fft2(pos_time)))
+
+    freq_len = len(fourier_data)
+    k_len = len(fourier_data[0])
+    freq = np.fft.fftfreq(freq_len, time_step)
+    kvector = np.fft.fftfreq(k_len, 5e-9)
+
+    k_max = 2*np.pi*kvector[int(0.5 * len(kvector))]*5e-9
+    f_min = np.abs(freq[0])
+    f_max = np.abs(freq[int(0.5 * len(freq))])/1e12 # to make it THz
+    f_points = int(0.5 * freq_len)
+
+    result = [fourier_data[i] for i in range(int(0.5 *freq_len),freq_len)]
+
+    fig1,ax1 = plt.subplots()
+
+    ax1.imshow(result, origin='lower', interpolation='bilinear', extent = [-k_max, k_max,f_min, f_max], aspect ="auto")
+
+    ax1.set_xlabel('qa')
+    ax1.set_ylabel('f (THz)')
+
+    plt.tight_layout()
+
+    savename = 'plots/dispersions/damping' + str(damping) + '.png' 
+
+    plt.savefig(savename, dpi=600)
+
+    plt.show()
+
 def main():
     
-    # Parameters  
+    # Parameters 
     t0 = 50
     t = 1000
-    V = 0.009
-    data = '<mxdmdt2>'
+    V = -0.03
+    data = '<mxdmdt>'
     damping = 2e-4
 
     # runSimulation(t, V, data, negative=True)
-    # save_steadystate(300, V, damping)
-    # for i in range(3):
+    save_steadystate(300, V, damping)
+    # for i in range(10):
     # find_plateau(t, V, data, damping, x_vals=[3600, 4000, 4500, 5500, 6500, 7000])
-    #     V -= 0.001
+        # V -= 0.001
     # plot_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800])
     # Init(t0)
     # savename = 'k(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
     time_avg_SA(t, V, damping, data, 3510, 7000)
     # profile_from_sim(t, V, damping, "C:/Users/mathimyh/Documents/Boris data/Simulations/boris_fordypningsoppgave/sims/V-0.15_damping0.001_steady_state.bsm", 170, 700)
 
-
+    # dispersion_relation(t, damping, 0, 7000)
 
 if __name__ == '__main__':
     main()

@@ -125,7 +125,6 @@ def plot_plateau(t, V, data, damping, x_vals):
     fig.savefig(plotname, dpi=600)
 
 
-
 def plot_tAvg_SA(t, V, damping, data, x_start, x_stop):
 
     filename = 'cache/t_avg/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '.txt'
@@ -170,63 +169,50 @@ def plot_tAvg_SA(t, V, damping, data, x_start, x_stop):
     plt.savefig(plotname, dpi=500)   
 
 
-def plot_tAvg_comparison(positive, negative, title, savename):
+def plot_tAvg_comparison(plots, legends, title, savename):
     
-    posotive = positive.split('/')[-1]
-    temps = posotive.split('_')
-    temp = temps[2]
-    V = float(temp[1:])
+    indexer = 0
+
+    for plot in plots:
 
 
-    f1 = open(positive, 'r')
-    f2 = open(negative, 'r')
+        f = open(plot, 'r')
 
-    lines1 = f1.readlines()
-    lines2 = f2.readlines()
-    lines1 = lines1[10:]
-    lines2 = lines2[10:]
+        plat = plot.split('/')[-1]
+        temps = plat.split('_')
+        temp = temps[2]
+        V = float(temp[1:])
 
-    xs = np.linspace(0, len(lines1[0]))
+        lines = f.readlines()
+        lines = lines[10:]
 
-    vals1 = []
-    vals2 = []
+        xs = np.linspace(0, 3490, 3490)
 
-    for i in range(len(lines1)):
-        vec1 = lines1[i].split('\t')
-        vec2 = lines2[i].split('\t')
-        all_vals1 = vec1[1:]
-        all_vals2 = vec2[1:]
-        j = 0
-        temp1 = []
-        temp2 = []
-        while j < len(all_vals1):
-            temp1.append(float(all_vals1[j]))
-            temp2.append(float(all_vals2[j]))
-            j += 3
-        vals1.append(temp1)
-        vals2.append(temp2)
-        
+        vals = []
 
-    ys1 = []
-    ys2 = []
+        for i in range(len(lines)):
+            vec1 = lines[i].split('\t')
+            vec2 = lines[i].split('\t')
+            all_vals = vec1[1:]
+            j = 0
+            temp = []
+            while j < len(all_vals):
+                temp.append(float(all_vals[j]))
+                j += 3
+            vals.append(temp)
 
-    for i in range(len(vals1[0])):
-        val1 = 0
-        val2 = 0
-        for j in range(len(vals1)):
-            val1 += float(vals1[j][i])
-            val2 += float(vals2[j][i])
-        val1 /= len(vals1)
-        val2 /= len(vals2)
-        ys1.append(val1)
-        ys2.append(val2)
+        ys = []
 
-    pos_V = 'V = ' + str(V * 1e6) + 'μV'
-    neg_V = 'V = ' + str(-V * 1e6) + 'μV'
+        for i in range(len(vals[0])):
+            val = 0
+            for j in range(len(vals)):
+                val += float(vals[j][i])
+            val /= len(vals)
+            ys.append(val)
 
+        plt.plot(xs, ys, label=legends[indexer])
 
-    plt.plot(xs, ys1, color='r', label=pos_V)
-    plt.plot(xs, ys2, color='b', label=neg_V)
+        indexer += 1
 
     plt.xlabel('Distance from injector (nm)')
     plt.ylabel('μ')
@@ -236,12 +222,24 @@ def plot_tAvg_comparison(positive, negative, title, savename):
 
     plt.savefig(savename, dpi=600)
 
+
 def main():
     a = 0
     # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
     # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
-    plot_tAvg_comparison('cache/t_avg/7000long/tAvg_damping0.0002_V0.009_mxdmdt.txt', 'cache/t_avg/7000long/tAvg_damping0.0002_V-0.009_mxdmdt.txt', 'Time averaged spin accumulation in AFM with virtual current', 'plots/t_avg/7000long/tAvg_comparison_mxdmdt.png')
+    f1 = 'cache/t_avg/7000long/tAvg_damping0.0002_V-0.009_mxdmdt.txt'
+    f2 = 'cache/t_avg/7000long_10thick/tAvg_damping0.0002_V-0.018_mxdmdt.txt'
+    f3 = 'cache/t_avg/7000long_15thick/tAvg_damping0.0002_V-0.03_mxdmdt.txt'
 
+    l1 = '1 layer'
+    l2 = '2 layers'
+    l3 = '3 layers'
+
+    title = 'Spin accumulation for different thicknesses'
+
+    savename = 'plots/t_avg/7000long_15thick/tAvg_meshthickness_comparison.png'
+
+    plot_tAvg_comparison((f1,f2,f3), (l1,l2,l3), title, savename)
 
 if __name__ == '__main__':
     main()
