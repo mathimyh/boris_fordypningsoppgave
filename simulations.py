@@ -87,8 +87,8 @@ def virtual_current(t, V, damping, sim_name):
     ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode('3400e-9,0,0,3600e-9,0,10e-9')
-    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,10e-9')
+    ns.addelectrode('3400e-9,0,0,3600e-9,0,15e-9')
+    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,15e-9')
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
@@ -320,19 +320,19 @@ def main():
     # Parameters 
     t0 = 50
     t = 1000
-    V = -0.03
+    V = -0.11
     data = '<mxdmdt>'
-    damping = 2e-4
+    damping = 2e-2
 
     # runSimulation(t, V, data, negative=True)
-    save_steadystate(300, V, damping)
+    # save_steadystate(100, V, damping)
     # for i in range(10):
-    # find_plateau(t, V, data, damping, x_vals=[3600, 4000, 4500, 5500, 6500, 7000])
+    # find_plateau(t, V, data, damping, x_vals=[3510, 3600, 4000, 5500, 6500, 7000])
         # V -= 0.001
     # plot_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800])
     # Init(t0)
     # savename = 'k(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
-    time_avg_SA(t, V, damping, data, 3510, 7000)
+    # time_avg_SA(t, V, damping, data, 3510, 7000)
     # profile_from_sim(t, V, damping, "C:/Users/mathimyh/Documents/Boris data/Simulations/boris_fordypningsoppgave/sims/V-0.15_damping0.001_steady_state.bsm", 170, 700)
 
     # dispersion_relation(t, damping, 0, 7000)

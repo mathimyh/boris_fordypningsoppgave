@@ -210,6 +210,8 @@ def plot_tAvg_comparison(plots, legends, title, savename):
             val /= len(vals)
             ys.append(val)
 
+        ys = [y / ys[0] for y in ys]
+
         plt.plot(xs, ys, label=legends[indexer])
 
         indexer += 1
@@ -229,13 +231,13 @@ def main():
     # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
     f1 = 'cache/t_avg/7000long/tAvg_damping0.0002_V-0.009_mxdmdt.txt'
     f2 = 'cache/t_avg/7000long_10thick/tAvg_damping0.0002_V-0.018_mxdmdt.txt'
-    f3 = 'cache/t_avg/7000long_15thick/tAvg_damping0.0002_V-0.03_mxdmdt.txt'
+    f3 = 'cache/t_avg/7000long_15thick/tAvg_damping0.0002_V-0.027_mxdmdt.txt'
 
     l1 = '1 layer'
     l2 = '2 layers'
     l3 = '3 layers'
 
-    title = 'Spin accumulation for different thicknesses'
+    title = 'Normalized spin accumulation for different thicknesses'
 
     savename = 'plots/t_avg/7000long_15thick/tAvg_meshthickness_comparison.png'
 
