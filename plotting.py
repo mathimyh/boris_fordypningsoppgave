@@ -72,11 +72,15 @@ def SA_plotting(filename, plotname, title):
     # plt.savefig(plotname, dpi=500)
 
 
-def plot_plateau(t, V, data, damping, x_vals):
+def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
 
     x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)
 
-    filename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'  
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+    filename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/' + mec_folder +  str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V'  + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'  
     f = open(filename, 'r')
 
     lines = f.readlines()
@@ -119,15 +123,20 @@ def plot_plateau(t, V, data, damping, x_vals):
 
         indexer += 1
 
-    plotname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/plots/plateau/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.png'
+    plotname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/plots/plateau' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.png'
     fig.suptitle(' Spin accumulation over time')
     fig.tight_layout()
     fig.savefig(plotname, dpi=600)
 
 
-def plot_tAvg_SA(t, V, damping, data, x_start, x_stop):
+def plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
 
-    filename = 'cache/t_avg/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '.txt'
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+
+    filename = 'cache/t_avg/' + mec_folder  + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '.txt'
     f = open(filename, 'r')
 
     lines = f.readlines()
@@ -165,7 +174,7 @@ def plot_tAvg_SA(t, V, damping, data, x_start, x_stop):
     plt.title("\n".join(wrap(title, 60)))
     plt.tight_layout()
 
-    plotname = 'plots/t_avg/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '_t' + str(t) + 'ps.png'
+    plotname = 'plots/t_avg/' + + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '_t' + str(t) + 'ps.png'
     plt.savefig(plotname, dpi=500)   
 
 
@@ -186,7 +195,7 @@ def plot_tAvg_comparison(plots, legends, title, savename):
         lines = f.readlines()
         lines = lines[10:]
 
-        xs = np.linspace(0, 3490, 3490)
+        xs = np.linspace(0, 1980, 1980)
 
         vals = []
 
@@ -210,6 +219,10 @@ def plot_tAvg_comparison(plots, legends, title, savename):
             val /= len(vals)
             ys.append(val)
 
+
+        if len(ys) > 1980:
+            ys = ys[10:]
+
         ys = [y / ys[0] for y in ys]
 
         plt.plot(xs, ys, label=legends[indexer])
@@ -229,19 +242,21 @@ def main():
     a = 0
     # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
     # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
-    f1 = 'cache/t_avg/7000long/tAvg_damping0.0002_V-0.009_mxdmdt.txt'
-    f2 = 'cache/t_avg/7000long_10thick/tAvg_damping0.0002_V-0.018_mxdmdt.txt'
-    f3 = 'cache/t_avg/7000long_15thick/tAvg_damping0.0002_V-0.027_mxdmdt.txt'
+    f1 = 'cache/t_avg/4000long/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
+    f2 = 'cache/t_avg/4000long_10thick/tAvg_damping0.0004_V-0.03_mxdmdt.txt'
+    f3 = 'cache/t_avg/4000long_15thick/tAvg_damping0.0004_V-0.05_mxdmdt.txt'
+    f4 = 'cache/t_avg/4000long_50thick/tAvg_damping0.0004_V-0.6_mxdmdt.txt'
 
     l1 = '1 layer'
     l2 = '2 layers'
     l3 = '3 layers'
+    l4 = '10 layers'
 
     title = 'Normalized spin accumulation for different thicknesses'
 
-    savename = 'plots/t_avg/7000long_15thick/tAvg_meshthickness_comparison.png'
+    savename = 'plots/t_avg/4000long_50thick/tAvg_meshthickness_comparison.png'
 
-    plot_tAvg_comparison((f1,f2,f3), (l1,l2,l3), title, savename)
+    plot_tAvg_comparison((f1,f2,f3,f4), (l1,l2,l3,l4), title, savename)
 
 if __name__ == '__main__':
     main()

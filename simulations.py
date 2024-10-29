@@ -10,19 +10,16 @@ from plotting import plot_tAvg_SA
 
 
 # Initializes an AFM mesh with its parameters and a relax stage. Saves the ground state after the simuation is over
-def Init(t0):
+def Init(meshdims, cellsize, t0, MEC):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
     
-    Lx = 7000
-    Ly = 50
-    Lz = 15
 
     # Add the base layer
-    Base = np.array([0, 0, 0, Lx, Ly, Lz]) * 1e-9
+    Base = np.array([0, 0, 0, meshdims[0], meshdims[1], meshdims[2]]) * 1e-9
     ns.setafmesh("base", Base)
-    ns.cellsize("base", np.array([5, 5, 5]) * 1e-9)
+    ns.cellsize("base", np.array([cellsize, cellsize, cellsize]) * 1e-9)
 
     # Add the modules
     ns.addmodule("base", "aniuni")
@@ -47,6 +44,18 @@ def Init(t0):
     # ns.setparam("base", "D_AFM", (0, 250e-6))
     ns.setparam("base", "ea1", (1,0,0))
 
+    # Add the magnetoelastic coupling if this is desired
+    Mec_folder = ''
+    if MEC:
+        ns.addmodule('base', 'melastic') # Add the new module
+        ns.surfacefix('-z') # I think I should fix one face? Just fixing negative z, this makes sense to me
+        ns.seteldt(1e-15) # I will the timestep of the magnetisation
+        ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
+        ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
+        ns.setparam('base', 'Ym', 25.8e2) #Pa      R.W. Makkay et al (1962)
+        ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3     G. Wedler et al (1999)
+        Mec_folder = 'MEC/'
+
     # Set the first relax stage, this finds the ground state
     ns.setstage('Relax')
     ns.editstagestop(0, 'time', t0 * 1e-12)
@@ -58,10 +67,11 @@ def Init(t0):
     ns.cuda(1)
     ns.Run()
 
-    ns.savesim('C:/Users/mathimyh/Documents/boris data/simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
+    savename = 'C:/Users/mathimyh/Documents/boris data/simulations/boris_fordypningsoppgave/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
+    ns.savesim(savename)
 
 # Sets up a simulation with a virtual current
-def virtual_current(t, V, damping, sim_name):
+def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -87,18 +97,19 @@ def virtual_current(t, V, damping, sim_name):
     ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode('3400e-9,0,0,3600e-9,0,15e-9')
-    ns.addelectrode('3400e-9,50e-9,0,3600e-9,50e-9,15e-9')
+    ns.addelectrode([meshdims[0]/2 - 100, 0, 0, meshdims[0]+100, 0, cellsize])
+    ns.addelectrode([meshdims[0]/2 - 100, meshdims[1], 0, meshdims[0]+100, meshdims[1],cellsize])
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
-    ns.setparamvar('SHA','equation','step(x-3480e-9)-step(x-3520e-9)')
-    ns.setparamvar('flST','equation','step(x-3480e-9)-step(x-3520e-9)')
+    func = 'step(x-' + str(meshdims[0]/2 - 20) + 'e-9)-step(x-' + str(meshdims[0]/2 + 20) + 'e-9)'
+    ns.setparamvar('SHA','equation', func)
+    ns.setparamvar('flST','equation',func)
 
     # Add damping function so it increases at the edges
     # ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-(x)^2 / 1000e-18) + exp(-(x-1200e-9)^2 / 1000e-18))')
-    ns.setparamvar('damping_AFM', 'equation', 'step(-x+200e-9)*(100*tanh((-x) / 50e-9) + 101) + step(x-6800e-9)*(100*tanh((x-7000e-9)/ 50e-9) + 101) + step(x-200e-9) - step(x-6800e-9)')
-
+    damp_func = 'step(-x+200e-9)*(100*tanh((-x) / 50e-9) + 101) + step(x-' + str(meshdims[0]-200) + 'e-9)*(100*tanh((x-' + str(meshdims[0]) + 'e-9)/ 50e-9) + 101) + step(x-200e-9) - step(x-' + str(meshdims[0]-200) + 'e-9)'
+    ns.setparamvar('damping_AFM', 'equation', damp_func)
 
     # Maybe try periodic boundary conditions for the large one, instead of damping equation?
     # ns.pbc('base', 'x')
@@ -134,32 +145,37 @@ def runSimulation(t, V, data, x_start, x_stop):
     ns.Run()
 
 # A function that runs the virtual current from a simulation for a given time and saves the simulation after
-def save_steadystate(t, V, damping):
+def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
     
-    ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
+    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + 'ground_state.bsm'
+    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
 
     ns.iterupdate(200)
 
     ns.Run()
 
-    savename = 'V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+    savename = 'sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
 
     ns.savesim(savename)
 
 # Function for finding the plateau. Saves data from one point along the x-axis.
-def find_plateau(t, V, data, damping, x_vals=False):
+def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
 
-    ns = virtual_current(t, V, damping, 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm')
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + 'ground_state.bsm'
+    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
 
     ns.iterupdate(200)
 
     # Save a profile to find the plateau
     if x_vals != False:
-
-        if data == '<mxdmdt>':
-            savedata = 'mxdmdt'
-        elif data == '<mxdmdt2>':
-            savedata = 'mxdmdt2'
         
         ns.editdatasave(0, 'time', 5e-12)
         ns.setdata('time')
@@ -170,21 +186,24 @@ def find_plateau(t, V, data, damping, x_vals=False):
     
         x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)
         
-        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/plateau_V' + str(V) + '_damping' + str(damping) + '_' + savedata + '_' + x_vals_string + 'nm.txt'
+        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'
         
         ns.savedatafile(savename)
 
     ns.Run()
 
     if x_vals != False:
-        plot_plateau(t, V, data, damping, x_vals)
+        plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC)
 
 # Load a simulation in steady state, run the simulation and save the SA along with the time
-def time_avg_SA(t, V, damping, data, x_start, x_stop):
+def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
 
     savedata = data[1:-1]
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
 
-    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -203,10 +222,11 @@ def time_avg_SA(t, V, damping, data, x_start, x_stop):
 
     ns.setdata('time')
     for i in range(x_stop - x_start):
-        temp = np.array([x_start + 1*i, 0, 0, x_start + 1 + 1*i, 50, 5]) * 1e-9
+        temp = np.array([x_start + 1*i, 0, 0, x_start + 1 + 1*i, meshdims[1], meshdims[2]]) * 1e-9
         ns.adddata(data, "base", temp)
 
-    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/t_avg/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
+
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/t_avg/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
 
     ns.savedatafile(savename)
 
@@ -215,8 +235,8 @@ def time_avg_SA(t, V, damping, data, x_start, x_stop):
 
     ns.Run()
 
-    plot_tAvg_SA(t, V, damping, data, x_start, x_stop)
-
+    plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC)
+    
 # Get a profile of the magnetization
 def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
 
@@ -318,21 +338,28 @@ def dispersion_relation(t, damping, x_start, x_stop):
 def main():
     
     # Parameters 
+    Lx = 4000
+    Ly = 50
+    Lz = 5
+    cellsize = 5
+    meshdims = (Lx, Ly, Lz)
+
     t0 = 50
     t = 1000
-    V = -0.11
+    V = -0.012
     data = '<mxdmdt>'
-    damping = 2e-2
+    damping = 4e-4
+    MEC = True
 
     # runSimulation(t, V, data, negative=True)
     # save_steadystate(100, V, damping)
     # for i in range(10):
-    # find_plateau(t, V, data, damping, x_vals=[3510, 3600, 4000, 5500, 6500, 7000])
+    # find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC)
         # V -= 0.001
     # plot_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800])
-    # Init(t0)
+    Init(meshdims, cellsize, t0, MEC)
     # savename = 'k(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
-    # time_avg_SA(t, V, damping, data, 3510, 7000)
+    # time_avg_SA(t, V, damping, data, 2020, 4000)
     # profile_from_sim(t, V, damping, "C:/Users/mathimyh/Documents/Boris data/Simulations/boris_fordypningsoppgave/sims/V-0.15_damping0.001_steady_state.bsm", 170, 700)
 
     # dispersion_relation(t, damping, 0, 7000)
