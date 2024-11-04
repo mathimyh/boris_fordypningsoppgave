@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from textwrap import wrap
+import os
 
 def plot_something(filename):
     
@@ -72,7 +73,7 @@ def SA_plotting(filename, plotname, title):
     # plt.savefig(plotname, dpi=500)
 
 
-def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
+def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
 
     x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)
 
@@ -80,7 +81,13 @@ def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
     if MEC:
         mec_folder = 'MEC/'
 
-    filename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/' + mec_folder +  str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V'  + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'  
+    folder_name = ani + '/plots/' + mec_folder + 'plateau/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    print(folder_name)
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+        
+
+    filename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 'plateau/' +  str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V'  + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'  
     f = open(filename, 'r')
 
     lines = f.readlines()
@@ -123,20 +130,24 @@ def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
 
         indexer += 1
 
-    plotname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/plots/plateau' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.png'
+
+    plotname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/plots/' + mec_folder + 'plateau/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.png'
     fig.suptitle(' Spin accumulation over time')
     fig.tight_layout()
     fig.savefig(plotname, dpi=600)
 
 
-def plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
+def plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani):
 
     mec_folder = ''
     if MEC:
         mec_folder = 'MEC/'
 
+    folder_name = ani + '/plots/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
 
-    filename = 'cache/t_avg/' + mec_folder  + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '.txt'
+    filename = ani + '/cache/' + mec_folder + 't_avg/'  + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '.txt'
     f = open(filename, 'r')
 
     lines = f.readlines()
@@ -174,7 +185,7 @@ def plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
     plt.title("\n".join(wrap(title, 60)))
     plt.tight_layout()
 
-    plotname = 'plots/t_avg/' + + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '_t' + str(t) + 'ps.png'
+    plotname = ani + '/plots/' + mec_folder + 't_avg/' +  str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + str(data[1:-1]) + '_t' + str(t) + 'ps.png'
     plt.savefig(plotname, dpi=500)   
 
 
@@ -242,21 +253,21 @@ def main():
     a = 0
     # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
     # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
-    f1 = 'cache/t_avg/4000long/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
-    f2 = 'cache/t_avg/4000long_10thick/tAvg_damping0.0004_V-0.03_mxdmdt.txt'
-    f3 = 'cache/t_avg/4000long_15thick/tAvg_damping0.0004_V-0.05_mxdmdt.txt'
-    f4 = 'cache/t_avg/4000long_50thick/tAvg_damping0.0004_V-0.6_mxdmdt.txt'
+    f1 = 'cache/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
+    f2 = 'cache/MEC/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
+    # f3 = 'cache/t_avg/4000x50x25/tAvg_damping0.0004_V-0.11_mxdmdt.txt'
+    # f4 = 'cache/t_avg/4000x50x50/tAvg_damping0.0004_V-0.6_mxdmdt.txt'
 
-    l1 = '1 layer'
-    l2 = '2 layers'
-    l3 = '3 layers'
-    l4 = '10 layers'
+    l1 = 'Without MEC'
+    l2 = 'With MEC'
+    # l3 = '5 layers'
+    # l4 = '10 layers'
 
-    title = 'Normalized spin accumulation for different thicknesses'
+    title = 'Normalized spin accumulation with/without MEC'
 
-    savename = 'plots/t_avg/4000long_50thick/tAvg_meshthickness_comparison.png'
+    savename = 'plots/MEC/t_avg/4000x50x5/tAvg_MEC_comparison_1layer.png'
 
-    plot_tAvg_comparison((f1,f2,f3,f4), (l1,l2,l3,l4), title, savename)
+    plot_tAvg_comparison((f1,f2), (l1,l2), title, savename)
 
 if __name__ == '__main__':
     main()

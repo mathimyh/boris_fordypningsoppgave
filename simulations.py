@@ -1,16 +1,19 @@
 import sys
+import os
 sys.path.insert(0, 'C:/users/mathimyh/documents/boris data/borispythonscripts/')
 
 from NetSocks import NSClient   # type: ignore
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 
 from plotting import plot_plateau
 from plotting import plot_tAvg_SA
 
 
 # Initializes an AFM mesh with its parameters and a relax stage. Saves the ground state after the simuation is over
-def Init(meshdims, cellsize, t0, MEC):
+def Init(meshdims, cellsize, t0, MEC, ani):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -42,19 +45,26 @@ def Init(meshdims, cellsize, t0, MEC):
     ns.setparam("base", "K3_AFM", 0)
     ns.setparam("base", "cHa", 1)
     # ns.setparam("base", "D_AFM", (0, 250e-6))
-    ns.setparam("base", "ea1", (1,0,0))
+    if ani == 'OOP':
+        ns.setparam("base", "ea1", (0,0,1))
+    elif ani == 'IP':
+        ns.setparam('base', 'ea1', (1,0,0))
+    else:
+        print("Choose anisotropy direction")
+        return
 
     # Add the magnetoelastic coupling if this is desired
     Mec_folder = ''
     if MEC:
         ns.addmodule('base', 'melastic') # Add the new module
-        ns.surfacefix('-z') # I think I should fix one face? Just fixing negative z, this makes sense to me
-        ns.seteldt(1e-15) # I will the timestep of the magnetisation
+        ns.surfacefix('y') # Fix one face
+        ns.seteldt(1e-14) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
-        ns.setparam('base', 'Ym', 25.8e2) #Pa      R.W. Makkay et al (1962)
+        ns.setparam('base', 'Ym', 25.8e10) #Pa      R.W. Makkay et al (1962)
         ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3     G. Wedler et al (1999)
-        Mec_folder = 'MEC/'
+        ns.setparam('base', 'mdamping', 1e15)
+        Mec_folder = 'MEC/'                 
 
     # Set the first relax stage, this finds the ground state
     ns.setstage('Relax')
@@ -62,12 +72,17 @@ def Init(meshdims, cellsize, t0, MEC):
 
     ns.setode('sLLG', 'RK4')
     ns.setdt(1e-15)
-    # ns.random()
+    ns.random()
+
+    folder_name = 'sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
 
     ns.cuda(1)
     ns.Run()
 
-    savename = 'C:/Users/mathimyh/Documents/boris data/simulations/boris_fordypningsoppgave/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
+
+    savename = 'C:/Users/mathimyh/Documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
     ns.savesim(savename)
 
 # Sets up a simulation with a virtual current
@@ -77,14 +92,14 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC):
     ns.reset()
     
     ns.loadsim(sim_name)
-    ns.reset()
     ns.clearelectrodes()
+    # ns.reset()
+
 
     # Voltage stage
     ns.setstage('V')
 
     ns.editstagevalue('0', str(0.001*V))
-    
     ns.editstagestop(0, 'time', t * 1e-12)
 
 
@@ -97,8 +112,8 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC):
     ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode([meshdims[0]/2 - 100, 0, 0, meshdims[0]+100, 0, cellsize])
-    ns.addelectrode([meshdims[0]/2 - 100, meshdims[1], 0, meshdims[0]+100, meshdims[1],cellsize])
+    ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, 0, (meshdims[0]/2+100)*1e-9, 0, cellsize*1e-9])
+    ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, meshdims[1]*1e-9, 0, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9,cellsize*1e-9])
     ns.designateground('1')
     
     # Add step function so that torque only acts on region in the injector
@@ -147,32 +162,43 @@ def runSimulation(t, V, data, x_start, x_stop):
 # A function that runs the virtual current from a simulation for a given time and saves the simulation after
 def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
     
-    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + 'ground_state.bsm'
-    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
 
+    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
+    print(loadname)
+    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
     ns.iterupdate(200)
+
+    folder_name = 'sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
 
     ns.Run()
 
-    mec_folder = ''
+    # Remove module because of bug
     if MEC:
-        mec_folder = 'MEC/'
+        ns.delmodule('base', 'melastic')
 
-    savename = 'sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
-
+    savename = 'C:/Users/mathimyh/Documents/Boris Data/simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     ns.savesim(savename)
 
 # Function for finding the plateau. Saves data from one point along the x-axis.
-def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
+def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
 
     mec_folder = ''
     if MEC:
         mec_folder = 'MEC/'
 
-    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + 'ground_state.bsm'
+    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
     ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
-
     ns.iterupdate(200)
+
+    folder_name = ani + '/cache/' + mec_folder + 'plateau/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
 
     # Save a profile to find the plateau
     if x_vals != False:
@@ -186,24 +212,29 @@ def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC):
     
         x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)
         
-        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/cache/plateau/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'
+        savename = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/cache/' +  mec_folder + 'plateau/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/plateau_V' + str(V) + '_damping' + str(damping) + '_' + data[1:-1] + '_' + x_vals_string + 'nm.txt'
         
         ns.savedatafile(savename)
 
     ns.Run()
 
     if x_vals != False:
-        plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC)
+        plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani)
 
 # Load a simulation in steady state, run the simulation and save the SA along with the time
-def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
+def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani):
 
     savedata = data[1:-1]
     mec_folder = ''
     if MEC:
         mec_folder = 'MEC/'
 
-    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    folder_name = ani + '/cache/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
@@ -226,7 +257,7 @@ def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
         ns.adddata(data, "base", temp)
 
 
-    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/t_avg/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
 
     ns.savedatafile(savename)
 
@@ -235,7 +266,7 @@ def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC):
 
     ns.Run()
 
-    plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC)
+    plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani)
     
 # Get a profile of the magnetization
 def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
@@ -335,6 +366,7 @@ def dispersion_relation(t, damping, x_start, x_stop):
 
     plt.show()
 
+
 def main():
     
     # Parameters 
@@ -344,25 +376,17 @@ def main():
     cellsize = 5
     meshdims = (Lx, Ly, Lz)
 
-    t0 = 50
     t = 1000
-    V = -0.012
+    V = -0.0000
     data = '<mxdmdt>'
     damping = 4e-4
-    MEC = True
+    MEC = 1
+    ani = 'IP'
 
-    # runSimulation(t, V, data, negative=True)
-    # save_steadystate(100, V, damping)
-    # for i in range(10):
-    # find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC)
-        # V -= 0.001
-    # plot_plateau(t, V, data, damping, x_vals=[200, 400, 600, 800])
-    Init(meshdims, cellsize, t0, MEC)
-    # savename = 'k(t, V, damping, loadname="C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/ground_state.bsm", savename=savename)
-    # time_avg_SA(t, V, damping, data, 2020, 4000)
-    # profile_from_sim(t, V, damping, "C:/Users/mathimyh/Documents/Boris data/Simulations/boris_fordypningsoppgave/sims/V-0.15_damping0.001_steady_state.bsm", 170, 700)
-
-    # dispersion_relation(t, damping, 0, 7000)
+    # save_steadystate(meshdims, cellsize, 200, V, damping, MEC, dir)
+    find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC, ani)
+    # Init(meshdims, cellsize, t, MEC, ani)
+    # time_avg_SA(meshdims, cellsize, t, V, damping, data, 2020, 4000, MEC, ani)
 
 if __name__ == '__main__':
     main()
