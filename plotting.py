@@ -98,8 +98,11 @@ def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
 
     fig, ax = plt.subplots(2, 3)
     
+    direction = 1
+    if ani == 'OOP':
+        direction = 3
 
-    for i in range(1, len(lines[0].split('\t')), 3):
+    for i in range(direction, len(lines[0].split('\t')), 3):
         ts = []
         vals = []
 
@@ -157,14 +160,18 @@ def plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, 
 
     vals = []
 
+    # This is the component we look at. In plane means x-component (0) and out-of-plane means z (2)
+    direction = 0
+    if ani == 'OOP':
+        direction = 2
+
     for line in lines:
         vec = line.split('\t')
         all_vals = vec[1:]
-        i = 0
         temp = []
-        while i < len(all_vals):
+        while direction < len(all_vals):
             temp.append(float(all_vals[i]))
-            i += 3
+            direction += 3
         vals.append(temp)
         
 

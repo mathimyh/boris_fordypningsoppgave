@@ -62,8 +62,8 @@ def Init(meshdims, cellsize, t0, MEC, ani):
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
         ns.setparam('base', 'Ym', 25.8e10) #Pa      R.W. Makkay et al (1962)
-        ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3     G. Wedler et al (1999)
-        ns.setparam('base', 'mdamping', 1e15)
+        ns.setparam('base', 'MEc', (-3.44e6, -7.5e6)) #J/m^3     G. Wedler et al (1999)
+        ns.setparam('base', 'mdamping', 1e18)
         Mec_folder = 'MEC/'                 
 
     # Set the first relax stage, this finds the ground state
@@ -72,9 +72,9 @@ def Init(meshdims, cellsize, t0, MEC, ani):
 
     ns.setode('sLLG', 'RK4')
     ns.setdt(1e-15)
-    ns.random()
+    # ns.random()
 
-    folder_name = 'sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    folder_name = ani + '/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
@@ -86,21 +86,28 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     ns.savesim(savename)
 
 # Sets up a simulation with a virtual current
-def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC):
+def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
 
     ns = NSClient(); ns.configure(True, False)
     ns.reset()
     
     ns.loadsim(sim_name)
     ns.clearelectrodes()
-    # ns.reset()
+    ns.reset()
 
+    # Have to run to find ground state first if MEC. Cant save ground state with current Boris version
+    if MEC:
+        ns.setstage('Relax')
+        ns.editstagestop(0, 'time', 1500 * 1e-12) # This is so annoying but I have to
+        ns.addstage('V')
+        ns.editstagevalue('1', str(0.001*V))
+        ns.editstagestop(1, 'time', (t+1500) * 1e-12)
+    
 
-    # Voltage stage
-    ns.setstage('V')
-
-    ns.editstagevalue('0', str(0.001*V))
-    ns.editstagestop(0, 'time', t * 1e-12)
+    else:
+        ns.setstage('V')
+        ns.editstagevalue('0', str(0.001*V))
+        ns.editstagestop(0, 'time', t * 1e-12)
 
 
     # Set spesific params and modules here for torque
@@ -112,9 +119,19 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC):
     ns.delmodule("base", "Zeeman")
     
     # Add the electrodes
-    ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, 0, (meshdims[0]/2+100)*1e-9, 0, cellsize*1e-9])
-    ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, meshdims[1]*1e-9, 0, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9,cellsize*1e-9])
-    ns.designateground('1')
+    if ani == 'IP':
+        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, meshdims[2], (meshdims[0]/2+100)*1e-9, 0, (meshdims[2] - cellsize)*1e-9])
+        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, meshdims[1]*1e-9, meshdims[2], (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, (meshdims[2] - cellsize)*1e-9])
+        ns.designateground('1')
+
+    elif ani == 'OOP':
+        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, 0, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, 0])
+        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, meshdims[2]*1e-9, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, meshdims[2]*1e-9])
+        ns.designateground('1')
+    
+    else:
+        print('Which anisotropy?')
+        exit(1)
     
     # Add step function so that torque only acts on region in the injector
     func = 'step(x-' + str(meshdims[0]/2 - 20) + 'e-9)-step(x-' + str(meshdims[0]/2 + 20) + 'e-9)'
@@ -168,7 +185,7 @@ def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
 
     loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
     print(loadname)
-    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
+    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC, ani)
     ns.iterupdate(200)
 
     folder_name = 'sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
@@ -192,7 +209,8 @@ def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
         mec_folder = 'MEC/'
 
     loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
-    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC)
+    
+    ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC, ani)
     ns.iterupdate(200)
 
     folder_name = ani + '/cache/' + mec_folder + 'plateau/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
@@ -366,7 +384,6 @@ def dispersion_relation(t, damping, x_start, x_stop):
 
     plt.show()
 
-
 def main():
     
     # Parameters 
@@ -377,15 +394,15 @@ def main():
     meshdims = (Lx, Ly, Lz)
 
     t = 1000
-    V = -0.0000
+    V = -0.6
     data = '<mxdmdt>'
     damping = 4e-4
     MEC = 1
     ani = 'IP'
 
     # save_steadystate(meshdims, cellsize, 200, V, damping, MEC, dir)
-    find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC, ani)
-    # Init(meshdims, cellsize, t, MEC, ani)
+    # find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC, ani)
+    Init(meshdims, cellsize, t, MEC, ani)
     # time_avg_SA(meshdims, cellsize, t, V, damping, data, 2020, 4000, MEC, ani)
 
 if __name__ == '__main__':
