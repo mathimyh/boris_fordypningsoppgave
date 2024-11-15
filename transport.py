@@ -58,9 +58,8 @@ def Init(meshdims, cellsize, t0, MEC, ani):
         ns.seteldt(1e-14) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
-        ns.setparam('base', 'Ym', 25.8e10) #Pa      R.W. Makkay et al (1962)
-        ns.setparam('base', 'MEc', (-3.44e6, -7.5e6)) #J/m^3     G. Wedler et al (1999)
-        ns.setparam('base', 'mdamping', 1e18)
+        ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3     G. Wedler et al (1999)
+        ns.setparam('base', 'mdamping', 1e15)
         Mec_folder = 'MEC/'                 
 
     # Set the first relax stage, this finds the ground state
@@ -92,19 +91,9 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
     ns.clearelectrodes()
     ns.reset()
 
-    # Have to run to find ground state first if MEC. Cant save ground state with current Boris version
-    if MEC:
-        ns.setstage('Relax')
-        ns.editstagestop(0, 'time', 1500 * 1e-12) # This is so annoying but I have to
-        ns.addstage('V')
-        ns.editstagevalue('1', str(0.001*V))
-        ns.editstagestop(1, 'time', (t+1500) * 1e-12)
-    
-
-    else:
-        ns.setstage('V')
-        ns.editstagevalue('0', str(0.001*V))
-        ns.editstagestop(0, 'time', t * 1e-12)
+    ns.setstage('V')
+    ns.editstagevalue('0', str(0.001*V))
+    ns.editstagestop(0, 'time', t * 1e-12)
 
 
     # Set spesific params and modules here for torque
