@@ -7,10 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-
-from plotting import plot_plateau
-from plotting import plot_tAvg_SA
-
+import plotting
 
 # Initializes an AFM mesh with its parameters and a relax stage. Saves the ground state after the simuation is over
 def Init(meshdims, cellsize, t0, MEC, ani):
@@ -57,7 +54,7 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     Mec_folder = ''
     if MEC:
         ns.addmodule('base', 'melastic') # Add the new module
-        ns.surfacefix('y') # Fix one face
+        ns.surfacefix('-z') # Fix one face
         ns.seteldt(1e-14) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
@@ -120,13 +117,13 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
     
     # Add the electrodes
     if ani == 'IP':
-        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, meshdims[2], (meshdims[0]/2+100)*1e-9, 0, (meshdims[2] - cellsize)*1e-9])
-        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, meshdims[1]*1e-9, meshdims[2], (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, (meshdims[2] - cellsize)*1e-9])
+        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, (meshdims[2]-cellsize), (meshdims[0]/2 + 100), 0, meshdims[2]])* 1e-9)
+        ns.addelectrode(np.array([(meshdims[0]/2 - 100), meshdims[1], (meshdims[2]-cellsize), (meshdims[0]/2 + 100), meshdims[1], meshdims[2]]) * 1e-9)
         ns.designateground('1')
 
     elif ani == 'OOP':
-        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, 0, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, 0])
-        ns.addelectrode([(meshdims[0]/2 - 100)*1e-9, 0, meshdims[2]*1e-9, (meshdims[0]/2+100)*1e-9, meshdims[1]*1e-9, meshdims[2]*1e-9])
+        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, 0, (meshdims[0]/2+100), meshdims[1], 0]) * 1e-9)
+        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, meshdims[2], (meshdims[0]/2+100), meshdims[1], meshdims[2]]) * 1e-9)
         ns.designateground('1')
     
     else:
@@ -237,7 +234,7 @@ def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
     ns.Run()
 
     if x_vals != False:
-        plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani)
+        plotting.plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani)
 
 # Load a simulation in steady state, run the simulation and save the SA along with the time
 def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani):
@@ -284,7 +281,7 @@ def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, a
 
     ns.Run()
 
-    plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani)
+    plotting.plot_tAvg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani)
     
 # Get a profile of the magnetization
 def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
@@ -319,91 +316,3 @@ def profile_from_sim(t, V, damping, sim_name, x_start, x_stop):
     ns.cuda(1)
 
     ns.Run()
-
-def dispersion_relation(t, damping, x_start, x_stop):
-
-    time_step = 0.1e-12
-    t0 = 10e-12
-    total_time = (2 * t0 )
-
-    Ms = 2.1e3
-
-    # sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
-    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/ground_state.bsm'
-
-
-    ns = NSClient(); ns.configure(True, False)
-    
-    ns.loadsim(sim_name)
-    ns.reset()
-
-    time = 0.0
-    ns.cuda(1)
-
-    output_file = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/cache/dispersions/first_test.txt'
-    ns.dp_newfile(output_file)
-
-    while time < total_time:
-        # ns.setstage('V')
-        # ns.editstagevalue('0', str(0.001*V))
-        ns.editstagestop(0, 'time', time + time_step)
-        ns.Run()
-        ns.dp_getexactprofile([x_start * 1e-9 + 5e-9/2, 50e-9/2 + 5e-9/2, 0], [x_stop * 1e-9 - 5e-9/2, 50e-9/2 + 5e-9/2, 0], 5e-9, 0)
-        ns.dp_div(0, Ms)
-        ns.dp_saveappendasrow(output_file, 0)
-        time += time_step
-
-    pos_time = np.loadtxt(output_file)
-
-    fourier_data = np.fft.fftshift(np.abs(np.fft.fft2(pos_time)))
-
-    freq_len = len(fourier_data)
-    k_len = len(fourier_data[0])
-    freq = np.fft.fftfreq(freq_len, time_step)
-    kvector = np.fft.fftfreq(k_len, 5e-9)
-
-    k_max = 2*np.pi*kvector[int(0.5 * len(kvector))]*5e-9
-    f_min = np.abs(freq[0])
-    f_max = np.abs(freq[int(0.5 * len(freq))])/1e12 # to make it THz
-    f_points = int(0.5 * freq_len)
-
-    result = [fourier_data[i] for i in range(int(0.5 *freq_len),freq_len)]
-
-    fig1,ax1 = plt.subplots()
-
-    ax1.imshow(result, origin='lower', interpolation='bilinear', extent = [-k_max, k_max,f_min, f_max], aspect ="auto")
-
-    ax1.set_xlabel('qa')
-    ax1.set_ylabel('f (THz)')
-
-    plt.tight_layout()
-
-    savename = 'plots/dispersions/damping' + str(damping) + '.png' 
-
-    plt.savefig(savename, dpi=600)
-
-    plt.show()
-
-def main():
-    
-    # Parameters 
-    Lx = 4000
-    Ly = 50
-    Lz = 5
-    cellsize = 5
-    meshdims = (Lx, Ly, Lz)
-
-    t = 1000
-    V = -0.6
-    data = '<mxdmdt>'
-    damping = 4e-4
-    MEC = 1
-    ani = 'IP'
-
-    # save_steadystate(meshdims, cellsize, 200, V, damping, MEC, dir)
-    # find_plateau(meshdims, cellsize, t, V, data, damping, [2020, 2300, 2600, 3000, 3500, 4000], MEC, ani)
-    Init(meshdims, cellsize, t, MEC, ani)
-    # time_avg_SA(meshdims, cellsize, t, V, damping, data, 2020, 4000, MEC, ani)
-
-if __name__ == '__main__':
-    main()

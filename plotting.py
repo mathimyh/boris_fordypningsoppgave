@@ -3,6 +3,8 @@ import numpy as np
 from textwrap import wrap
 import os
 
+plt.rcParams.update({'font.size': 22})
+
 def plot_something(filename):
     
     f = open(filename, 'r')
@@ -202,7 +204,6 @@ def plot_tAvg_comparison(plots, legends, title, savename):
 
     for plot in plots:
 
-
         f = open(plot, 'r')
 
         plat = plot.split('/')[-1]
@@ -255,26 +256,72 @@ def plot_tAvg_comparison(plots, legends, title, savename):
 
     plt.savefig(savename, dpi=600)
 
+def plot_dispersion(meshdims, damping, MEC, ani, dir):
+    
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+    time_step = 0.1e-12
+
+    output_file = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 'dispersions/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) +  'dispersion.txt'
+
+    pos_time = np.loadtxt(output_file)
+
+    fourier_data = np.fft.fftshift(np.abs(np.fft.fft2(pos_time)))
+
+    freq_len = len(fourier_data)
+    k_len = len(fourier_data[0])
+    freq = np.fft.fftfreq(freq_len, time_step)
+    kvector = np.fft.fftfreq(k_len, 5e-9)
+
+    k_max = 2*np.pi*kvector[int(0.5 * len(kvector))]*5e-9
+    f_min = np.abs(freq[0])
+    f_max = np.abs(freq[int(0.5 * len(freq))])/1e12 # to make it THz
+    f_points = int(0.5 * freq_len)
+
+    result = [fourier_data[i] for i in range(int(0.5 *freq_len),freq_len)]
+    
+    fig1,ax1 = plt.subplots()
+
+    ax1.imshow(result, origin='lower', interpolation='bilinear', extent = [-k_max, k_max,f_min, f_max], aspect ="auto", clim=(0, 1500))
+
+    ax1.set_xlabel('qa')
+    ax1.set_ylabel('f (THz)')
+
+    plt.tight_layout()
+
+    folder_name = ani + '/plots/' + mec_folder + 'dispersions/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+    savename = ani + '/plots/' + mec_folder + 'dispersions/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/damping' + str(damping) + 'dir' + dir + '_magnon_dispersion.png' 
+
+    plt.savefig(savename, dpi=600)
+
+    plt.show()
 
 def main():
-    a = 0
-    # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
-    # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
-    f1 = 'cache/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
-    f2 = 'cache/MEC/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
-    # f3 = 'cache/t_avg/4000x50x25/tAvg_damping0.0004_V-0.11_mxdmdt.txt'
-    # f4 = 'cache/t_avg/4000x50x50/tAvg_damping0.0004_V-0.6_mxdmdt.txt'
+    # a = 0
+    # # SA_plotting('cache/tAvg_damping0.001_V0.145_mxdmdt.txt', "afm_transport/x_axis_mxdmdt_400nm.png", "Spin accumulation in AFM (mxdmdt) at 400 nm, V = -160μV")
+    # # plateau_plot("cache/plateau_V-0.15_damping0.005_mxdmdt_250nm_350nm_450nm_550nm.txt", "plots/plateau/plateau_250_V-0.2_0.005_mxdmdt.png", "Spin accumulation (mxdmdt) at 250 nm with V = -0.15 μV")
+    # f1 = 'cache/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
+    # f2 = 'cache/MEC/t_avg/4000x50x5/tAvg_damping0.0004_V-0.012_mxdmdt.txt'
+    # # f3 = 'cache/t_avg/4000x50x25/tAvg_damping0.0004_V-0.11_mxdmdt.txt'
+    # # f4 = 'cache/t_avg/4000x50x50/tAvg_damping0.0004_V-0.6_mxdmdt.txt'
 
-    l1 = 'Without MEC'
-    l2 = 'With MEC'
-    # l3 = '5 layers'
-    # l4 = '10 layers'
+    # l1 = 'Without MEC'
+    # l2 = 'With MEC'
+    # # l3 = '5 layers'
+    # # l4 = '10 layers'
 
-    title = 'Normalized spin accumulation with/without MEC'
+    # title = 'Normalized spin accumulation with/without MEC'
 
-    savename = 'plots/MEC/t_avg/4000x50x5/tAvg_MEC_comparison_1layer.png'
+    # savename = 'plots/MEC/t_avg/4000x50x5/tAvg_MEC_comparison_1layer.png'
 
-    plot_tAvg_comparison((f1,f2), (l1,l2), title, savename)
+    # plot_tAvg_comparison((f1,f2), (l1,l2), title, savename)
+
+    plot_dispersion([4000, 50, 5], 4e-4, 0, 'IP', 'y')
 
 if __name__ == '__main__':
     main()
