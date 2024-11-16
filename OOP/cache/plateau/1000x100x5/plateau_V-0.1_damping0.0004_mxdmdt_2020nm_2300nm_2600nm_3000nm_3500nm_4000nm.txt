@@ -1,0 +1,10 @@
+Sat Nov 16 15:26:55 2024
+
+<base> : Rectangle : 0m, 0m, 0m; 1um, 100nm, 5nm. Cells : 200, 20, 1. Cellsize : 5nm, 5nm, 5nm
+<supermesh> : Rectangle : 0m, 0m, 0m; 1um, 100nm, 5nm. Cells : 200, 20, 1. Cellsize : 5nm, 5nm, 5nm
+
+Saved data (dataname (unit) <meshname> (cells_rectangle)) : 
+
+time (s)	
+
+0

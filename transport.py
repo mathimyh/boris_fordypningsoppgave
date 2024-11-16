@@ -44,6 +44,7 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     # ns.setparam("base", "D_AFM", (0, 250e-6))
     if ani == 'OOP':
         ns.setparam("base", "ea1", (0,0,1))
+        ns.setangle(0,90)
     elif ani == 'IP':
         ns.setparam('base', 'ea1', (1,0,0))
     else:
@@ -58,8 +59,8 @@ def Init(meshdims, cellsize, t0, MEC, ani):
         ns.seteldt(1e-14) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
-        ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3     G. Wedler et al (1999)
-        ns.setparam('base', 'mdamping', 1e15)
+        ns.setparam('base', 'MEc', (-3.44e6, -7.5e6)) #J/m^3     G. Wedler et al (1999)
+        ns.setparam('base', 'mdamping', 1e18)
         Mec_folder = 'MEC/'                 
 
     # Set the first relax stage, this finds the ground state
@@ -104,23 +105,31 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
     ns.setparam("base", "damping_AFM", (damping, damping))
     ns.delmodule("base", "Zeeman")
     
-    # Add the electrodes
-    if ani == 'IP':
-        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, (meshdims[2]-cellsize), (meshdims[0]/2 + 100), 0, meshdims[2]])* 1e-9)
-        ns.addelectrode(np.array([(meshdims[0]/2 - 100), meshdims[1], (meshdims[2]-cellsize), (meshdims[0]/2 + 100), meshdims[1], meshdims[2]]) * 1e-9)
-        ns.designateground('1')
+    # # Add the electrodes
+    # # Electrode along y-direction
+    # if ani == 'IP':
+    ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, (meshdims[2]-cellsize), (meshdims[0]/2 + 100), 0, meshdims[2]])* 1e-9)
+    ns.addelectrode(np.array([(meshdims[0]/2 - 100), meshdims[1], (meshdims[2]-cellsize), (meshdims[0]/2 + 100), meshdims[1], meshdims[2]]) * 1e-9)
+    ns.designateground('1')
 
-    elif ani == 'OOP':
-        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, 0, (meshdims[0]/2+100), meshdims[1], 0]) * 1e-9)
-        ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, meshdims[2], (meshdims[0]/2+100), meshdims[1], meshdims[2]]) * 1e-9)
-        ns.designateground('1')
+    # # This is current along x-direction
+    # # elif ani == 'OOP':
+    # ns.addelectrode(np.array([0, 0, 0, 0, meshdims[1], meshdims[2]]) * 1e-9)
+    # ns.addelectrode(np.array([meshdims[0], 0, 0, meshdims[0], meshdims[1], meshdims[2]]) * 1e-9)
+    # ns.designateground('1')
+
+    # # Electrode along z-direction
+    # ns.addelectrode(np.array([meshdims[0]/2 - 100, 0, 0, meshdims[0]/2 + 100, meshdims[1], 0]) * 1e-9)
+    # ns.addelectrode(np.array([meshdims[0]/2 - 100, 0, meshdims[2], meshdims[0]/2 + 100, meshdims[1], meshdims[2]]) * 1e-9)
+    # ns.designateground('1')
     
-    else:
-        print('Which anisotropy?')
-        exit(1)
+    # else:
+    #     print('Which anisotropy?')
+    #     exit(1)
     
     # Add step function so that torque only acts on region in the injector
-    func = 'step(x-' + str(meshdims[0]/2 - 20) + 'e-9)-step(x-' + str(meshdims[0]/2 + 20) + 'e-9)'
+    width = 40
+    func = 'step(x-' + str(meshdims[0]/2 - width/2) + 'e-9)-step(x-' + str(meshdims[0]/2 + width/2) + 'e-9)'
     ns.setparamvar('SHA','equation', func)
     ns.setparamvar('flST','equation',func)
 
@@ -180,10 +189,6 @@ def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
 
     ns.Run()
 
-    # Remove module because of bug
-    if MEC:
-        ns.delmodule('base', 'melastic')
-
     savename = 'C:/Users/mathimyh/Documents/Boris Data/simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     ns.savesim(savename)
 
@@ -211,7 +216,7 @@ def find_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
         ns.setdata('time')
 
         for x_val in x_vals:
-            temp = np.array([x_val, 0, 0, x_val + 10, 50, 5]) * 1e-9
+            temp = np.array([x_val, 0, 0, x_val + 10, meshdims[1], meshdims[2]]) * 1e-9
             ns.adddata(data, "base", temp)
     
         x_vals_string = 'nm_'.join(str(x_val) for x_val in x_vals)

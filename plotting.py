@@ -100,6 +100,9 @@ def plot_plateau(meshdims, cellsize, t, V, data, damping, x_vals, MEC, ani):
     indexer = 0
 
     fig, ax = plt.subplots(2, 3)
+
+    fig.set_figheight(10)
+    fig.set_figwidth(14)
     
     direction = 1
     if ani == 'OOP':
