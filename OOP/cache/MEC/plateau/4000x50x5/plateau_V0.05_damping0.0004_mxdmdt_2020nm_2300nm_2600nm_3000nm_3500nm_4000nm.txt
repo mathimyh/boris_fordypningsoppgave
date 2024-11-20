@@ -1,0 +1,11 @@
+Mon Nov 18 16:23:50 2024
+
+<base> : Rectangle : 0m, 0m, 0m; 4um, 50nm, 5nm. Cells : 800, 10, 1. Cellsize : 5nm, 5nm, 5nm
+<supermesh> : Rectangle : 0m, 0m, 0m; 4um, 50nm, 5nm. Cells : 800, 10, 1. Cellsize : 5nm, 5nm, 5nm
+
+Saved data (dataname (unit) <meshname> (cells_rectangle)) : 
+
+time (s)	<mxdmdt> (1/s) <base> (2.02um, 0m, 0m; 2.03um, 50nm, 5nm)			<mxdmdt> (1/s) <base> (2.3um, 0m, 0m; 2.31um, 50nm, 5nm)			<mxdmdt> (1/s) <base> (2.6um, 0m, 0m; 2.61um, 50nm, 5nm)			<mxdmdt> (1/s) <base> (3um, 0m, 0m; 3.01um, 50nm, 5nm)			<mxdmdt> (1/s) <base> (3.5um, 0m, 0m; 3.51um, 50nm, 5nm)			
+
+0	-1.22211e+06	35552.2	16523.4	-934590	-262356	-35494.8	4055.82	437360	4304	72940.9	-571832	1120.16	-17094.5	194216	6930.72
+5e-12	2.02244e+12	3.70905e+11	3.20103e+12	7.3403e+10	1.89105e+11	1.24754e+10	2.82648e+10	-1.19833e+11	-2.04128e+09	-6.87852e+10	2.23864e+10	3.33863e+09	-3.00606e+10	-3.42131e+11	-3.79885e+10

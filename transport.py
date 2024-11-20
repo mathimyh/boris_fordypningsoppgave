@@ -56,11 +56,12 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     if MEC:
         ns.addmodule('base', 'melastic') # Add the new module
         ns.surfacefix('-z') # Fix one face
-        ns.seteldt(1e-14) # I will do the timestep of the magnetisation
+        ns.seteldt(1e-15) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
-        ns.setparam('base', 'MEc', (-3.44e6, -7.5e6)) #J/m^3     G. Wedler et al (1999)
-        ns.setparam('base', 'mdamping', 1e18)
+        ns.setparam('base', 'MEc', (-3.44e1, 0)) #J/m^3  (Original B2 = 7.5e6)   G. Wedler et al (1999)
+        ns.setparam('base', 'mdamping', 1e15) # I found 1e15 to be nice until now
+        ns.setparamvar('base', 'mdamping', 'abl_tanh', [200e-9/meshdims[0], 200e-9/meshdims[0], 0, 0, 0, 0, 1, 1e4, 200]) # Use one similar to tut 33 in Boris
         Mec_folder = 'MEC/'                 
 
     # Set the first relax stage, this finds the ground state
@@ -74,6 +75,10 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     folder_name = ani + '/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
+
+
+    # Test with periodic boundary conditions for dispersions:
+    ns.pbc('base', 'x')
 
     ns.cuda(1)
     ns.Run()
@@ -105,9 +110,13 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
     ns.setparam("base", "damping_AFM", (damping, damping))
     ns.delmodule("base", "Zeeman")
     
-    # # Add the electrodes
-    # # Electrode along y-direction
-    # if ani == 'IP':
+    # If it is OOP ani, then we need to change the spin current direction
+    if ani == 'OOP':
+        ns.setparam('base', 'STp', (1,0,0)) # x-dir spin current and y-dir electrode gives z-dir torque
+
+    # Add the electrodes
+
+    # Current along y-direction
     ns.addelectrode(np.array([(meshdims[0]/2 - 100), 0, (meshdims[2]-cellsize), (meshdims[0]/2 + 100), 0, meshdims[2]])* 1e-9)
     ns.addelectrode(np.array([(meshdims[0]/2 - 100), meshdims[1], (meshdims[2]-cellsize), (meshdims[0]/2 + 100), meshdims[1], meshdims[2]]) * 1e-9)
     ns.designateground('1')
@@ -135,8 +144,8 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
 
     # Add damping function so it increases at the edges
     # ns.setparamvar('damping_AFM', 'equation', '1 + 10000 * (exp(-(x)^2 / 1000e-18) + exp(-(x-1200e-9)^2 / 1000e-18))')
-    damp_func = 'step(-x+200e-9)*(100*tanh((-x) / 50e-9) + 101) + step(x-' + str(meshdims[0]-200) + 'e-9)*(100*tanh((x-' + str(meshdims[0]) + 'e-9)/ 50e-9) + 101) + step(x-200e-9) - step(x-' + str(meshdims[0]-200) + 'e-9)'
-    ns.setparamvar('damping_AFM', 'equation', damp_func)
+    # damp_func = 'step(-x+200e-9)*(100*tanh((-x) / 50e-9) + 101) + step(x-' + str(meshdims[0]-200) + 'e-9)*(100*tanh((x-' + str(meshdims[0]) + 'e-9)/ 50e-9) + 101) + step(x-200e-9) - step(x-' + str(meshdims[0]-200) + 'e-9)'
+    # ns.setparamvar('damping_AFM', 'equation', damp_func)
 
     # Maybe try periodic boundary conditions for the large one, instead of damping equation?
     # ns.pbc('base', 'x')
@@ -172,13 +181,13 @@ def runSimulation(t, V, data, x_start, x_stop):
     ns.Run()
 
 # A function that runs the virtual current from a simulation for a given time and saves the simulation after
-def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
+def save_steadystate(meshdims, cellsize, t, V, damping, MEC, ani):
     
     mec_folder = ''
     if MEC:
         mec_folder = 'MEC/'
 
-    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
+    loadname = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
     print(loadname)
     ns = virtual_current(meshdims, cellsize, t, V, damping, loadname, MEC, ani)
     ns.iterupdate(200)
@@ -189,7 +198,7 @@ def save_steadystate(meshdims, cellsize, t, V, damping, MEC):
 
     ns.Run()
 
-    savename = 'C:/Users/mathimyh/Documents/Boris Data/simulations/boris_fordypningsoppgave/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    savename = 'C:/Users/mathimyh/Documents/Boris Data/simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     ns.savesim(savename)
 
 # Function for finding the plateau. Saves data from one point along the x-axis.
