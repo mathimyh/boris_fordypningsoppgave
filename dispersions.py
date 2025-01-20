@@ -9,7 +9,7 @@ from pathlib import Path
 
 import plotting
 
-def magnon_dispersion_relation(meshdims, cellsize, t, damping, x_start, x_stop, MEC, ani, dir):
+def magnon_dispersion_relation(meshdims, cellsize, t, V, damping, x_start, x_stop, MEC, ani, dir, axis):
 
     dir1 = 0
 
@@ -32,12 +32,15 @@ def magnon_dispersion_relation(meshdims, cellsize, t, damping, x_start, x_stop, 
         os.makedirs(folder_name)
 
     time_step = 0.1e-12
-    total_time = (2 * t)*1e-12
+    total_time = t*1e-12
 
     Ms = 2.1e3
-
+    
+    # if axis == 'z':
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
     # sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/sims/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
-    sim_name = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
+    # else:
+    # sim_name = 'C:/Users/mathimyh/Documents/Boris Data/Simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ground_state.bsm'
 
     ns = NSClient(); ns.configure(True, False)
     
@@ -47,20 +50,24 @@ def magnon_dispersion_relation(meshdims, cellsize, t, damping, x_start, x_stop, 
     time = 0.0
     ns.cuda(1)
 
-    output_file = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 'dispersions/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) +  '/' + 'dir' + dir + '_dispersion.txt'
+    output_file = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 'dispersions/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) +  '/' + 'dir' + dir + '_axis' + axis + '_dispersion.txt'
     ns.dp_newfile(output_file)
 
     while time < total_time:
-        # ns.setstage('V')
-        # ns.editstagevalue('0', str(0.001*V))
+        # if axis == 'z':
+        ns.setstage('V')
+        ns.editstagevalue('0', str(0.001*V))
         ns.editstagestop(0, 'time', time + time_step)
         ns.Run()
-        ns.dp_getexactprofile([x_start * 1e-9 + cellsize*1e-9/2, 50e-9/2 + cellsize*1e-9/2, 0], [x_stop * 1e-9 - cellsize*1e-9/2, 50e-9/2 + cellsize*1e-9/2, 0], cellsize*1e-9, 0)
+        if axis == 'x':
+            ns.dp_getexactprofile((np.array([x_start + cellsize/2, meshdims[1]/2+cellsize/2, meshdims[2]-cellsize])*1e-9), (np.array([x_stop - cellsize/2, meshdims[1]/2 + cellsize/2, meshdims[2]-cellsize])*1e-9), cellsize*1e-9, 0)
+        elif axis == 'z':
+            ns.dp_getexactprofile((np.array([meshdims[0]/2-cellsize/2, meshdims[1]/2-cellsize/2, meshdims[2]-cellsize/2])*1e-9), (np.array([meshdims[0]/2-cellsize/2, meshdims[1]/2-cellsize/2, 40+cellsize/2])*1e-9), cellsize*1e-9, 0)
         ns.dp_div(dir1, Ms)
         ns.dp_saveappendasrow(output_file, dir1)
         time += time_step
 
-    plotting.plot_magnon_dispersion(meshdims, damping, MEC, ani, dir)
+    plotting.plot_magnon_dispersion(meshdims, damping, MEC, ani, dir, axis)
 
 def phonon_dispersion_relation(meshdims, cellsize, t, damping, x_start, x_stop, MEC, ani, dir):
 
@@ -96,7 +103,6 @@ def phonon_dispersion_relation(meshdims, cellsize, t, damping, x_start, x_stop, 
     ns.reset()
 
     ns.editstagestop(0, 'time', 10e-12)
-    ns.cuda(1)
     ns.Run()
     ns.reset()
 

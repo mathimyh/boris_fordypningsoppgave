@@ -59,7 +59,7 @@ def Init(meshdims, cellsize, t0, MEC, ani):
         ns.seteldt(1e-15) # I will do the timestep of the magnetisation
         ns.setparam('base', 'cC', (36.3e10, 17e10, 8.86e10)) # N/m^2       A. Yu. Lebedev et al (1989)
         ns.setparam('base', 'density', 5250) #kg/m^3       found this on google
-        ns.setparam('base', 'MEc', (-3.44e1, 7.5e6)) #J/m^3  (Original B2 = 7.5e6)   G. Wedler et al (1999)
+        ns.setparam('base', 'MEc', (-3.44e6, 7.5e6)) #J/m^3  (Original B2 = 7.5e6)   G. Wedler et al (1999)
         ns.setparam('base', 'mdamping', 1e15) # I found 1e15 to be nice until now
         # ns.setparamvar('base', 'mdamping', 'abl_tanh', [200e-9/meshdims[0], 200e-9/meshdims[0], 0, 0, 0, 0, 1, 1e4, 200]) # Use one similar to tut 33 in Boris
         Mec_folder = 'MEC/'                 
@@ -71,6 +71,12 @@ def Init(meshdims, cellsize, t0, MEC, ani):
     ns.setode('sLLG', 'RK4')
     ns.setdt(1e-15)
     # ns.random()
+
+    z_damping = 0
+    if meshdims[2] == 110:
+        z_damping = 80
+
+    ns.setparamvar('damping_AFM', 'abl_tanh', [z_damping/meshdims[0], z_damping/meshdims[0], 0, 0, z_damping/meshdims[0], 0, 1, 1e2, z_damping]) 
 
     folder_name = ani + '/sims/' + Mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
     if not os.path.exists(folder_name):
@@ -145,10 +151,10 @@ def virtual_current(meshdims, cellsize, t, V, damping, sim_name, MEC, ani):
     # Use the built-in generator for damping at the edges. 
     # Also for the 2 deepest layers for the 150 thick
     z_damping = 0
-    if meshdims[2] == 150:
-        z_damping = 50
+    if meshdims[2] == 25:
+        z_damping = 40
 
-    ns.setparamvar('damping_AFM', 'abl_tanh', [200/meshdims[0], 200/meshdims[0], 0, 0, z_damping/meshdims[0], 0, 1, 1e4, 200]) 
+    ns.setparamvar('damping_AFM', 'abl_tanh', [300/meshdims[0], 300/meshdims[0], 0, 0, 0, 0, 1, 1e2, z_damping]) 
 
     # # Maybe try periodic boundary conditions for the large one, instead of damping equation?
     # ns.pbc('base', 'x')
@@ -274,10 +280,9 @@ def time_avg_SA(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, a
     ns.editdatasave(0, 'time', t * 1e-12 /200)
 
     ns.setdata('time')
-    for i in range(x_stop - x_start):
-        temp = np.array([x_start + 1*i, 0, meshdims[2], x_start + 1 + 1*i, meshdims[1], meshdims[2]]) * 1e-9 # Only measure at the top
+    for i in range(int((x_stop - x_start)/cellsize)):
+        temp = np.array([x_start + (1*i*cellsize), 0, meshdims[2], x_start + (1 + i)*cellsize, meshdims[1], meshdims[2]]) * 1e-9 # Only measure at the top
         ns.adddata(data, "base", temp)
-
 
     savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
 
@@ -322,12 +327,12 @@ def time_avg_SA_2D(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC
     ns.setdata('time')
 
 
-    # To not have an enormous amount of data, x-direction will only sample each cellsize. 
+    # To not have an enormous amount of data, x-direction will only sample every 10th cellsize. 
     # z-direction will sample every nm.
     # At least for now, I will see if the resolution is fine or not. 
     for j in range(meshdims[2]):
-        for i in range(int((x_stop - x_start)/cellsize)): 
-            temp = np.array([x_start + i*cellsize, meshdims[1]/2, j, x_start + (i+1)*cellsize, meshdims[1]/2, j]) * 1e-9 # In the middle in y-direction
+        for i in range(int((x_stop - x_start)/cellsize*0.1)): 
+            temp = np.array([x_start + i*cellsize*10, 0, j, x_start + (i+1)*cellsize*10, meshdims[1], j]) * 1e-9 # Average over y direction
             ns.adddata(data, "base", temp)
 
 
@@ -342,6 +347,56 @@ def time_avg_SA_2D(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC
 
     plotting.plot_tAvg_SA_2D(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani)
 
+def time_avg_SA_2D_y(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani):
+    savedata = data[1:-1]
+    mec_folder = ''
+    if MEC:
+        mec_folder = 'MEC/'
+
+    folder_name = ani + '/cache/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2])
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+
+    sim_name = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/sims/' + mec_folder + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/V' + str(V) + '_damping' + str(damping) + '_steady_state.bsm'
+    
+    ns = NSClient(); ns.configure(True, False)
+    ns.reset()
+    
+    ns.loadsim(sim_name)
+    ns.reset()
+
+    # Voltage stage
+    ns.setstage('V')
+
+    ns.editstagevalue('0', str(0.001*V))
+    
+    ns.editstagestop(0, 'time', t * 1e-12)
+
+    ns.editdatasave(0, 'time', t * 1e-12 /200)
+
+    ns.setdata('time')
+
+
+    # To not have an enormous amount of data, x-direction will only sample every 10th cellsize. 
+    # z-direction will sample every nm.
+    # At least for now, I will see if the resolution is fine or not. 
+    for j in range(meshdims[1]):
+        for i in range(int((x_stop - x_start)/cellsize*0.1)): 
+            temp = np.array([x_start + i*cellsize*10, j, meshdims[2], x_start + (i+1)*cellsize*10, j, meshdims[2]]) * 1e-9 # Average over y direction
+            ns.adddata(data, "base", temp)
+
+
+    savename = 'C:/Users/mathimyh/documents/boris data/simulations/boris_fordypningsoppgave/' + ani + '/cache/' + mec_folder + 't_avg/' + str(meshdims[0]) + 'x' + str(meshdims[1]) + 'x' + str(meshdims[2]) + '/ydir_2D_tAvg_damping' + str(damping) + '_V' + str(V) + '_' + savedata  + '.txt'
+
+    ns.savedatafile(savename)
+
+    ns.cuda(1)
+    # ns.selectcudadevice([0,1])
+
+    ns.Run()
+
+    plotting.plot_tAvg_SA_2D_y(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani)
 
 def time_avg_SA_z(meshdims, cellsize, t, V, damping, data, x_start, x_stop, MEC, ani):
     savedata = data[1:-1]
